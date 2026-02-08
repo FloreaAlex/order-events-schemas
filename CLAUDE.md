@@ -115,7 +115,7 @@ This library defines schemas for the following order lifecycle events:
 
 4. **order.cancelled** - Published when an order is cancelled
    - Fields: `orderId`, `userId`, `correlationId`, `timestamp`
-   - Data: `reason`, `cancelledBy` (user/system/admin), `refundAmount?`
+   - Data: `reason` (non-empty string), `cancelledBy` (user/system/admin), `refundAmount?`
 
 **Kafka Constants**:
 - Topic: `order.events` (`TOPICS.ORDER_EVENTS`)
@@ -134,10 +134,12 @@ import {
   OrderCreatedEvent,
   OrderConfirmedEvent,
   OrderShippedEvent,
-  OrderCancelledEvent
+  OrderCancelledEvent,
+  OrderEvent,
+  ValidationResult
 } from '@florea-alex/order-events-schemas'
 
-// Create a validated event
+// Create a validated event with type-safe data parameter
 const event = createOrderEvent(EVENT_TYPES.ORDER_CREATED, {
   orderId: 123,
   userId: 456,
@@ -147,10 +149,11 @@ const event = createOrderEvent(EVENT_TYPES.ORDER_CREATED, {
   }
 });
 
-// Validate an incoming event
-const result = validateEvent(someEvent);
+// Validate an incoming event (accepts unknown for safety)
+const result: ValidationResult = validateEvent(someEvent);
 if (result.success) {
-  // result.data contains the typed, validated event
+  // result.data contains the typed, validated OrderEvent
+  const validEvent: OrderEvent = result.data;
 }
 ```
 
@@ -448,12 +451,23 @@ Developer agents will:
 **Exported Items**:
 - Constants: `EVENT_TYPES`, `TOPICS`, `CONSUMER_GROUPS`
 - Schemas: `BaseEventSchema`, `OrderCreatedSchema`, `OrderConfirmedSchema`, `OrderShippedSchema`, `OrderCancelledSchema`, `OrderItemSchema`
-- Types: `EventType`, `BaseEvent`, `OrderCreatedEvent`, `OrderConfirmedEvent`, `OrderShippedEvent`, `OrderCancelledEvent`, `OrderItem`, `Topic`, `ConsumerGroup`
+- Types: `EventType`, `BaseEvent`, `OrderCreatedEvent`, `OrderConfirmedEvent`, `OrderShippedEvent`, `OrderCancelledEvent`, `OrderItem`, `Topic`, `ConsumerGroup`, `OrderEvent` (union type), `ValidationResult`
 - Helpers: `createOrderEvent(type, params)`, `validateEvent(event)`
 
 **Helper Function Behaviors**:
-- `createOrderEvent()`: Auto-generates `correlationId` (UUID) and `timestamp` (ISO 8601) if not provided, validates against schema, throws ZodError on failure
-- `validateEvent()`: Returns `{ success: boolean, data?: event, error?: Error }`, handles null/undefined gracefully
+- `createOrderEvent()`: Type-safe factory with overloaded signatures for each event type. Auto-generates `correlationId` (UUID) and `timestamp` (ISO 8601) if not provided, validates against schema, throws ZodError on failure. TypeScript enforces correct data shape at compile time based on event type.
+- `validateEvent()`: Accepts `unknown` parameter (not `any`) for proper type safety at validation boundaries. Returns `{ success: boolean, data?: OrderEvent, error?: Error }`, handles null/undefined gracefully.
+
+**Validation Rules**:
+- All event types require non-empty `orderId`, `userId`, `correlationId` (UUID), and `timestamp` (ISO 8601)
+- `order.cancelled` `reason` field must be non-empty string (min length 1)
+- `order.created` and `order.confirmed` require at least one item in `items[]` array
+- All monetary amounts must be non-negative numbers
+
+**Package Configuration**:
+- `package.json` includes `files: ["dist"]` to publish only compiled output
+- `package.json` includes `exports` map for proper module resolution: `{ ".": { "require": "./dist/index.js", "types": "./dist/index.d.ts" } }`
+- Compiled output is CommonJS format (TypeScript source uses ES modules, transpiled to CommonJS via `tsconfig.json`)
 
 **Testing**: 41 Jest tests covering all schemas, helper functions, and edge cases
 

@@ -1,8 +1,6 @@
 // order-events-schemas
 // Shared TypeScript library for Kafka event schemas
 
-export const VERSION = '0.0.1';
-
 // Constants
 export { TOPICS, CONSUMER_GROUPS } from './topics';
 export type { Topic, ConsumerGroup } from './topics';
@@ -29,3 +27,4 @@ export type { OrderCancelledEvent } from './events/order-cancelled';
 
 // Helper functions
 export { createOrderEvent, validateEvent } from './helpers/create-event';
+export type { OrderEvent, ValidationResult } from './helpers/create-event';

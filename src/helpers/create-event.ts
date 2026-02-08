@@ -1,19 +1,33 @@
 import { randomUUID } from 'crypto';
-import { ZodError } from 'zod';
 import { EVENT_TYPES, EventType } from '../events/base';
 import { OrderCreatedSchema, OrderCreatedEvent } from '../events/order-created';
 import { OrderConfirmedSchema, OrderConfirmedEvent } from '../events/order-confirmed';
 import { OrderShippedSchema, OrderShippedEvent } from '../events/order-shipped';
 import { OrderCancelledSchema, OrderCancelledEvent } from '../events/order-cancelled';
 
-type OrderEvent = OrderCreatedEvent | OrderConfirmedEvent | OrderShippedEvent | OrderCancelledEvent;
+export type OrderEvent = OrderCreatedEvent | OrderConfirmedEvent | OrderShippedEvent | OrderCancelledEvent;
 
-interface CreateEventParams {
+interface BaseEventParams {
   orderId: number;
   userId: number;
-  data: any;
   correlationId?: string;
   timestamp?: string;
+}
+
+interface CreateOrderCreatedParams extends BaseEventParams {
+  data: OrderCreatedEvent['data'];
+}
+
+interface CreateOrderConfirmedParams extends BaseEventParams {
+  data: OrderConfirmedEvent['data'];
+}
+
+interface CreateOrderShippedParams extends BaseEventParams {
+  data: OrderShippedEvent['data'];
+}
+
+interface CreateOrderCancelledParams extends BaseEventParams {
+  data: OrderCancelledEvent['data'];
 }
 
 /**
@@ -21,7 +35,14 @@ interface CreateEventParams {
  * Auto-generates correlationId and timestamp if not provided
  * Throws ZodError if validation fails
  */
-export function createOrderEvent(type: EventType, params: CreateEventParams): OrderEvent {
+export function createOrderEvent(type: typeof EVENT_TYPES.ORDER_CREATED, params: CreateOrderCreatedParams): OrderCreatedEvent;
+export function createOrderEvent(type: typeof EVENT_TYPES.ORDER_CONFIRMED, params: CreateOrderConfirmedParams): OrderConfirmedEvent;
+export function createOrderEvent(type: typeof EVENT_TYPES.ORDER_SHIPPED, params: CreateOrderShippedParams): OrderShippedEvent;
+export function createOrderEvent(type: typeof EVENT_TYPES.ORDER_CANCELLED, params: CreateOrderCancelledParams): OrderCancelledEvent;
+export function createOrderEvent(
+  type: EventType,
+  params: CreateOrderCreatedParams | CreateOrderConfirmedParams | CreateOrderShippedParams | CreateOrderCancelledParams
+): OrderEvent {
   const { orderId, userId, data, correlationId, timestamp } = params;
 
   // Build base event
@@ -53,7 +74,7 @@ export function createOrderEvent(type: EventType, params: CreateEventParams): Or
   }
 }
 
-interface ValidationResult {
+export interface ValidationResult {
   success: boolean;
   data?: OrderEvent;
   error?: Error;
@@ -65,7 +86,7 @@ interface ValidationResult {
  * Returns { success: false, error } on failure
  * Handles null/undefined/missing type gracefully
  */
-export function validateEvent(event: any): ValidationResult {
+export function validateEvent(event: unknown): ValidationResult {
   try {
     // Handle null/undefined/missing type
     if (!event || typeof event !== 'object') {
@@ -75,7 +96,17 @@ export function validateEvent(event: any): ValidationResult {
       };
     }
 
-    if (!event.type) {
+    // Type guard to check for 'type' property
+    if (!('type' in event)) {
+      return {
+        success: false,
+        error: new Error('Event type is required'),
+      };
+    }
+
+    const eventWithType = event as { type: unknown };
+
+    if (!eventWithType.type) {
       return {
         success: false,
         error: new Error('Event type is required'),
@@ -85,7 +116,7 @@ export function validateEvent(event: any): ValidationResult {
     // Validate based on event type
     let validatedEvent: OrderEvent;
 
-    switch (event.type) {
+    switch (eventWithType.type) {
       case EVENT_TYPES.ORDER_CREATED:
         validatedEvent = OrderCreatedSchema.parse(event);
         break;
@@ -105,7 +136,7 @@ export function validateEvent(event: any): ValidationResult {
       default:
         return {
           success: false,
-          error: new Error(`Unknown event type: ${event.type}`),
+          error: new Error(`Unknown event type: ${eventWithType.type}`),
         };
     }
 

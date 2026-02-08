@@ -5,7 +5,7 @@ import { BaseEventSchema, EVENT_TYPES } from './base';
  * Schema for order.cancelled event data
  */
 const OrderCancelledDataSchema = z.object({
-  reason: z.string(),
+  reason: z.string().min(1),
   cancelledBy: z.enum(['user', 'system', 'admin']),
   refundAmount: z.number().nonnegative().optional(),
 });
