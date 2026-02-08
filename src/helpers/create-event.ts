@@ -50,8 +50,8 @@ export function createOrderEvent(
     type,
     orderId,
     userId,
-    correlationId: correlationId || randomUUID(),
-    timestamp: timestamp || new Date().toISOString(),
+    correlationId: correlationId ?? randomUUID(),
+    timestamp: timestamp ?? new Date().toISOString(),
     data,
   };
 
