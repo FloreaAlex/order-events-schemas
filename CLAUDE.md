@@ -151,8 +151,11 @@ const event = createOrderEvent(EVENT_TYPES.ORDER_CREATED, {
 // Validate an incoming event (accepts unknown for safety)
 const result: ValidationResult = validateEvent(someEvent);
 if (result.success) {
-  // result.data contains the typed, validated OrderEvent
+  // TypeScript narrows: result.data is OrderEvent - guaranteed, no assertion needed
   const validEvent: OrderEvent = result.data;
+} else {
+  // TypeScript narrows: result.error is Error - guaranteed
+  console.error('Validation failed:', result.error.message);
 }
 ```
 
@@ -455,7 +458,7 @@ Developer agents will:
 
 **Helper Function Behaviors**:
 - `createOrderEvent()`: Type-safe factory with overloaded signatures for each event type. Auto-generates `correlationId` (UUID) and `timestamp` (ISO 8601) if not provided, validates against schema, throws ZodError on failure. TypeScript enforces correct data shape at compile time based on event type.
-- `validateEvent()`: Accepts `unknown` parameter (not `any`) for proper type safety at validation boundaries. Returns `{ success: boolean, data?: OrderEvent, error?: Error }`, handles null/undefined gracefully.
+- `validateEvent()`: Accepts `unknown` parameter (not `any`) for proper type safety at validation boundaries. Returns a discriminated union type `ValidationResult` for proper type narrowing: `{ success: true, data: OrderEvent, error?: undefined } | { success: false, data?: undefined, error: Error }`. This enables TypeScript to correctly narrow types when checking `result.success`, eliminating the need for non-null assertions.
 
 **Validation Rules**:
 - All event types require non-empty `orderId`, `userId`, `correlationId` (UUID), and `timestamp` (ISO 8601)

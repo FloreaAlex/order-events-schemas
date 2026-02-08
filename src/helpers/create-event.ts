@@ -74,11 +74,9 @@ export function createOrderEvent(
   }
 }
 
-export interface ValidationResult {
-  success: boolean;
-  data?: OrderEvent;
-  error?: Error;
-}
+export type ValidationResult =
+  | { success: true; data: OrderEvent; error?: undefined }
+  | { success: false; data?: undefined; error: Error };
 
 /**
  * Validates an event object against its schema
