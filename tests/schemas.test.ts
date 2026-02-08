@@ -191,6 +191,11 @@ describe('OrderCancelledSchema', () => {
     expect(() => OrderCancelledSchema.parse(invalidEvent)).toThrow();
   });
 
+  test('rejects order.cancelled event with empty reason', () => {
+    const invalidEvent = { ...validEvent, data: { ...validEvent.data, reason: '' } };
+    expect(() => OrderCancelledSchema.parse(invalidEvent)).toThrow();
+  });
+
   test('rejects order.cancelled event with invalid cancelledBy value', () => {
     const invalidEvent = { ...validEvent, data: { ...validEvent.data, cancelledBy: 'invalid' } };
     expect(() => OrderCancelledSchema.parse(invalidEvent)).toThrow();
