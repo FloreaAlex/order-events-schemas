@@ -4,8 +4,12 @@ import { OrderCreatedSchema, OrderCreatedEvent } from '../events/order-created';
 import { OrderConfirmedSchema, OrderConfirmedEvent } from '../events/order-confirmed';
 import { OrderShippedSchema, OrderShippedEvent } from '../events/order-shipped';
 import { OrderCancelledSchema, OrderCancelledEvent } from '../events/order-cancelled';
+import { PaymentAuthorizedSchema, PaymentAuthorizedEvent } from '../events/payment-authorized';
+import { PaymentFailedSchema, PaymentFailedEvent } from '../events/payment-failed';
 
 export type OrderEvent = OrderCreatedEvent | OrderConfirmedEvent | OrderShippedEvent | OrderCancelledEvent;
+export type PaymentEvent = PaymentAuthorizedEvent | PaymentFailedEvent;
+export type AllEvents = OrderEvent | PaymentEvent;
 
 interface BaseEventParams {
   orderId: number;
@@ -28,6 +32,14 @@ interface CreateOrderShippedParams extends BaseEventParams {
 
 interface CreateOrderCancelledParams extends BaseEventParams {
   data: OrderCancelledEvent['data'];
+}
+
+interface CreatePaymentAuthorizedParams extends BaseEventParams {
+  data: PaymentAuthorizedEvent['data'];
+}
+
+interface CreatePaymentFailedParams extends BaseEventParams {
+  data: PaymentFailedEvent['data'];
 }
 
 /**
@@ -74,8 +86,44 @@ export function createOrderEvent(
   }
 }
 
+/**
+ * Factory function to create and validate payment events
+ * Auto-generates correlationId and timestamp if not provided
+ * Throws ZodError if validation fails
+ */
+export function createPaymentEvent(type: typeof EVENT_TYPES.PAYMENT_AUTHORIZED, params: CreatePaymentAuthorizedParams): PaymentAuthorizedEvent;
+export function createPaymentEvent(type: typeof EVENT_TYPES.PAYMENT_FAILED, params: CreatePaymentFailedParams): PaymentFailedEvent;
+export function createPaymentEvent(
+  type: EventType,
+  params: CreatePaymentAuthorizedParams | CreatePaymentFailedParams
+): PaymentEvent {
+  const { orderId, userId, data, correlationId, timestamp } = params;
+
+  // Build base event
+  const baseEvent = {
+    type,
+    orderId,
+    userId,
+    correlationId: correlationId ?? randomUUID(),
+    timestamp: timestamp ?? new Date().toISOString(),
+    data,
+  };
+
+  // Validate against the appropriate schema based on event type
+  switch (type) {
+    case EVENT_TYPES.PAYMENT_AUTHORIZED:
+      return PaymentAuthorizedSchema.parse(baseEvent);
+
+    case EVENT_TYPES.PAYMENT_FAILED:
+      return PaymentFailedSchema.parse(baseEvent);
+
+    default:
+      throw new Error(`Unknown event type: ${type}`);
+  }
+}
+
 export type ValidationResult =
-  | { success: true; data: OrderEvent; error?: undefined }
+  | { success: true; data: AllEvents; error?: undefined }
   | { success: false; data?: undefined; error: Error };
 
 /**
@@ -112,7 +160,7 @@ export function validateEvent(event: unknown): ValidationResult {
     }
 
     // Validate based on event type
-    let validatedEvent: OrderEvent;
+    let validatedEvent: AllEvents;
 
     switch (eventWithType.type) {
       case EVENT_TYPES.ORDER_CREATED:
@@ -129,6 +177,14 @@ export function validateEvent(event: unknown): ValidationResult {
 
       case EVENT_TYPES.ORDER_CANCELLED:
         validatedEvent = OrderCancelledSchema.parse(event);
+        break;
+
+      case EVENT_TYPES.PAYMENT_AUTHORIZED:
+        validatedEvent = PaymentAuthorizedSchema.parse(event);
+        break;
+
+      case EVENT_TYPES.PAYMENT_FAILED:
+        validatedEvent = PaymentFailedSchema.parse(event);
         break;
 
       default:
