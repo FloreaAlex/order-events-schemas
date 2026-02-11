@@ -166,9 +166,9 @@ if (result.success) {
   correlationId: string,     // UUID v4
   timestamp: string,         // ISO 8601 datetime
   data: {
-    transactionId: string,
+    transactionId: string,   // Non-empty string
     amount: number,          // Positive number
-    currency: string
+    currency: string         // Non-empty string
   }
 }
 ```
@@ -183,7 +183,7 @@ if (result.success) {
   correlationId: string,
   timestamp: string,
   data: {
-    reason: string,
+    reason: string,          // Non-empty string
     retryable: boolean
   }
 }

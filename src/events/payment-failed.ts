@@ -5,7 +5,7 @@ import { BaseEventSchema, EVENT_TYPES } from './base';
  * Schema for payment.failed event data
  */
 const PaymentFailedDataSchema = z.object({
-  reason: z.string(),
+  reason: z.string().min(1),
   retryable: z.boolean(),
 });
 

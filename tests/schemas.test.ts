@@ -505,6 +505,16 @@ describe('PaymentAuthorizedSchema', () => {
     const invalidEvent = { ...validEvent, orderId: 0 };
     expect(() => PaymentAuthorizedSchema.parse(invalidEvent)).toThrow();
   });
+
+  test('rejects payment.authorized event with empty transactionId', () => {
+    const invalidEvent = { ...validEvent, data: { ...validEvent.data, transactionId: '' } };
+    expect(() => PaymentAuthorizedSchema.parse(invalidEvent)).toThrow();
+  });
+
+  test('rejects payment.authorized event with empty currency', () => {
+    const invalidEvent = { ...validEvent, data: { ...validEvent.data, currency: '' } };
+    expect(() => PaymentAuthorizedSchema.parse(invalidEvent)).toThrow();
+  });
 });
 
 describe('PaymentFailedSchema', () => {
@@ -546,6 +556,11 @@ describe('PaymentFailedSchema', () => {
 
   test('rejects payment.failed event with invalid correlationId (not UUID)', () => {
     const invalidEvent = { ...validEvent, correlationId: 'not-a-uuid' };
+    expect(() => PaymentFailedSchema.parse(invalidEvent)).toThrow();
+  });
+
+  test('rejects payment.failed event with empty reason', () => {
+    const invalidEvent = { ...validEvent, data: { ...validEvent.data, reason: '' } };
     expect(() => PaymentFailedSchema.parse(invalidEvent)).toThrow();
   });
 });

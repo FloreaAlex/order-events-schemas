@@ -220,9 +220,9 @@ consumer.on('message', (message) => {
   correlationId: string,
   timestamp: string,
   data: {
-    transactionId: string,
+    transactionId: string,   // Non-empty string
     amount: number,          // Positive number
-    currency: string
+    currency: string         // Non-empty string
   }
 }
 ```
@@ -237,7 +237,7 @@ consumer.on('message', (message) => {
   correlationId: string,
   timestamp: string,
   data: {
-    reason: string,
+    reason: string,          // Non-empty string
     retryable: boolean
   }
 }
@@ -253,6 +253,9 @@ consumer.on('message', (message) => {
 - **quantity**: Positive integer (> 0)
 - **price**: Positive number (> 0)
 - **items**: Non-empty array
+- **transactionId**: Non-empty string (min length 1)
+- **currency**: Non-empty string (min length 1)
+- **reason** (payment failures, order cancellations): Non-empty string (min length 1)
 
 ## Development
 

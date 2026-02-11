@@ -5,9 +5,9 @@ import { BaseEventSchema, EVENT_TYPES } from './base';
  * Schema for payment.authorized event data
  */
 const PaymentAuthorizedDataSchema = z.object({
-  transactionId: z.string(),
+  transactionId: z.string().min(1),
   amount: z.number().positive(),
-  currency: z.string(),
+  currency: z.string().min(1),
 });
 
 /**
