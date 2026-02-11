@@ -1,14 +1,49 @@
-# order-events-schemas
+# Order Events Schemas
 
-Shared TypeScript library for Kafka event schemas used across microservices in the e-commerce platform.
+## System Architecture Overview
+
+**Workspace**: Archmap Test Platform
+**Architecture Style**: Microservices with event-driven communication
+**This Component's Role**: Shared npm package (@florea-alex/order-events-schemas) containing Zod schemas, event type constants, topic/consumer group constants, and helper functions for all order lifecycle Kafka events. Used by Order Service, Product Service, Notification Worker, and Payment Service.
+**Component Type**: library
+**Position in Flow**: Receives from: Order Service (other), Product Service (other), Notification Worker (other), Payment Service (other)
+
+**Related Components**:
+  - ← **Order Service** (service) - other
+  - ← **Product Service** (service) - other
+  - ← **Notification Worker** (worker) - other
+  - ← **Payment Service** (service) - other
 
 ## Purpose
 
 This library provides runtime-validated Zod schemas, TypeScript types, and helper functions for all event-driven communication between services. It ensures a single source of truth for event contracts and prevents schema drift between producers and consumers.
 
-## Architecture Context
-
 Part of the event-driven microservices architecture as defined in ADR-002. Services use Kafka for asynchronous communication, and this library guarantees type safety and runtime validation for all events.
+
+## Patterns
+
+### Schema Validation with Zod
+All event structures use Zod schemas for runtime validation. Base schema defines common fields (type, orderId, userId, correlationId, timestamp), extended by specific event schemas. Helper functions (`createOrderEvent`, `createPaymentEvent`, `validateEvent`) provide factory and validation patterns with type-safe interfaces.
+
+### Event-Driven Architecture
+Defines contracts for Kafka-based order lifecycle events. Topics and consumer groups are exported as typed constants to ensure consistency across services.
+
+## Component Details
+
+**Tech Stack**:
+- TypeScript 5.3+
+- Zod 3.22 (runtime schema validation)
+- Jest (testing)
+
+**Architecture**: Shared library with typed exports
+
+**Key Directories**:
+- `src/` - Source code
+  - `src/events/` - Event schemas (base, order-created, order-confirmed, order-shipped, order-cancelled, payment-authorized, payment-failed)
+  - `src/helpers/` - Factory and validation helper functions
+  - `src/topics.ts` - Kafka topic and consumer group constants
+- `tests/` - Jest test suite with comprehensive schema validation tests (64+ tests)
+- `dist/` - Compiled output (CommonJS module)
 
 ## Events Catalog
 
@@ -44,7 +79,18 @@ CONSUMER_GROUPS.PAYMENT_SERVICE = 'payment-service-group'
 CONSUMER_GROUPS.ORDER_SERVICE = 'order-service-group'
 ```
 
-## Event Structure
+## Dependencies
+
+**Runtime Dependencies**:
+- `zod` ^3.22.0 - Runtime schema validation
+
+**Message Queues**:
+- Kafka topics: `order.events`, `payment.events`
+- Consumer groups: `notification-worker-group`, `product-service-group`, `payment-service-group`, `order-service-group`
+
+## API Contracts
+
+### Event Structure
 
 All events extend the base schema with common fields:
 
@@ -59,6 +105,74 @@ All events extend the base schema with common fields:
 }
 ```
 
+### Events Published/Consumed
+
+#### Order Events
+
+**order.created**
+- Fields: type, orderId, userId, correlationId, timestamp, data
+- Data: items (OrderItem[]), totalAmount, shippingAddress (optional)
+- Published by: Order Service
+- Consumed by: Product Service, Notification Worker
+
+**order.confirmed**
+- Fields: type, orderId, userId, correlationId, timestamp, data
+- Data: items (OrderItem[]), totalAmount, paymentId (optional)
+- Published by: Order Service
+- Consumed by: Notification Worker
+
+**order.shipped**
+- Fields: type, orderId, userId, correlationId, timestamp, data
+- Data: trackingNumber (optional), carrier (optional), estimatedDelivery (optional)
+- Published by: Order Service
+- Consumed by: Notification Worker
+
+**order.cancelled**
+- Fields: type, orderId, userId, correlationId, timestamp, data
+- Data: reason, cancelledBy ('user'|'system'|'admin'), refundAmount (optional)
+- Published by: Order Service
+- Consumed by: Product Service, Notification Worker
+
+#### Payment Events
+
+**payment.authorized**
+- Fields: type, orderId, userId, correlationId, timestamp, data
+- Data: transactionId (non-empty string), amount (positive number), currency (non-empty string)
+- Published by: Payment Service
+- Consumed by: Order Service, Notification Worker
+
+**payment.failed**
+- Fields: type, orderId, userId, correlationId, timestamp, data
+- Data: reason (non-empty string), retryable (boolean)
+- Published by: Payment Service
+- Consumed by: Order Service, Notification Worker
+
+### Exported API
+
+**Constants**:
+- `EVENT_TYPES` - Event type string constants
+- `TOPICS` - Kafka topic names
+- `CONSUMER_GROUPS` - Kafka consumer group names
+
+**Schemas**:
+- `BaseEventSchema` - Base event structure
+- `OrderCreatedSchema`, `OrderConfirmedSchema`, `OrderShippedSchema`, `OrderCancelledSchema` - Specific order event schemas
+- `PaymentAuthorizedSchema`, `PaymentFailedSchema` - Specific payment event schemas
+- `OrderItemSchema` - Order item structure
+
+**Types**:
+- `EventType`, `BaseEvent`, `OrderItem`
+- `OrderCreatedEvent`, `OrderConfirmedEvent`, `OrderShippedEvent`, `OrderCancelledEvent`
+- `PaymentAuthorizedEvent`, `PaymentFailedEvent`
+- `OrderEvent` - Union of all order events
+- `PaymentEvent` - Union of all payment events
+- `ValidationResult` - Result type for validation
+
+**Helpers**:
+- `createOrderEvent(type, params)` - Factory function with auto-generated correlationId/timestamp
+- `createPaymentEvent(type, params)` - Factory function for payment events with auto-generated correlationId/timestamp
+- `validateEvent(event)` - Safe validation returning `{ success, data?, error? }`
+
 ## Usage
 
 ### Installing the Library
@@ -70,7 +184,7 @@ npm install @florea-alex/order-events-schemas
 ### Producing Events (with validation)
 
 ```typescript
-import { createOrderEvent, createPaymentEvent, EVENT_TYPES } from '@florea-alex/order-events-schemas';
+import { createOrderEvent, createPaymentEvent, EVENT_TYPES, TOPICS } from '@florea-alex/order-events-schemas';
 
 // Creating an order event (throws ZodError if invalid)
 const orderEvent = createOrderEvent(EVENT_TYPES.ORDER_CREATED, {
@@ -136,113 +250,6 @@ consumer.on('message', (message) => {
 });
 ```
 
-## Event Schemas
-
-### OrderCreatedEvent
-
-```typescript
-{
-  type: 'order.created',
-  orderId: number,
-  userId: number,
-  correlationId: string,
-  timestamp: string,
-  data: {
-    items: Array<{
-      productId: number,
-      quantity: number,
-      price: number
-    }>,
-    totalAmount: number,
-    shippingAddress?: string
-  }
-}
-```
-
-### OrderConfirmedEvent
-
-```typescript
-{
-  type: 'order.confirmed',
-  orderId: number,
-  userId: number,
-  correlationId: string,
-  timestamp: string,
-  data: {
-    items: Array<{ productId, quantity, price }>,
-    totalAmount: number,
-    paymentId?: string
-  }
-}
-```
-
-### OrderShippedEvent
-
-```typescript
-{
-  type: 'order.shipped',
-  orderId: number,
-  userId: number,
-  correlationId: string,
-  timestamp: string,
-  data: {
-    trackingNumber?: string,
-    carrier?: string,
-    estimatedDelivery?: string  // ISO 8601
-  }
-}
-```
-
-### OrderCancelledEvent
-
-```typescript
-{
-  type: 'order.cancelled',
-  orderId: number,
-  userId: number,
-  correlationId: string,
-  timestamp: string,
-  data: {
-    reason: string,
-    cancelledBy: 'user' | 'system' | 'admin',
-    refundAmount?: number
-  }
-}
-```
-
-### PaymentAuthorizedEvent
-
-```typescript
-{
-  type: 'payment.authorized',
-  orderId: number,
-  userId: number,
-  correlationId: string,
-  timestamp: string,
-  data: {
-    transactionId: string,   // Non-empty string
-    amount: number,          // Positive number
-    currency: string         // Non-empty string
-  }
-}
-```
-
-### PaymentFailedEvent
-
-```typescript
-{
-  type: 'payment.failed',
-  orderId: number,
-  userId: number,
-  correlationId: string,
-  timestamp: string,
-  data: {
-    reason: string,          // Non-empty string
-    retryable: boolean
-  }
-}
-```
-
 ## Validation Rules
 
 - **orderId**: Positive integer
@@ -291,7 +298,43 @@ npm run typecheck
 
 ## Conventions
 
-- **Event naming**: Use dot notation (`order.created`, `payment.authorized`)
-- **Field naming**: camelCase
-- **Immutability**: Once published, event schemas should not break backwards compatibility
-- **Versioning**: Bump version on any schema change; services must update dependency to use new schemas
+### Event Structure
+- All events extend `BaseEventSchema` with common fields
+- `correlationId` is UUID v4 format
+- `timestamp` is ISO 8601 datetime string
+- Event types use dot notation: `order.created`, `order.confirmed`, `payment.authorized`, etc.
+- Field naming: camelCase
+
+### Schema Validation
+- Use `createOrderEvent()` or `createPaymentEvent()` for creating events (throws ZodError on validation failure)
+- Use `validateEvent()` for safe validation without throwing (returns `{ success: boolean, data?, error? }`)
+- Positive integers for IDs (orderId, userId, productId)
+- Positive numbers for monetary amounts and quantities
+
+### Versioning
+- Once published, event schemas should not break backwards compatibility
+- Bump version on any schema change; services must update dependency to use new schemas
+
+## Boundaries & Constraints
+
+✅ **Responsibilities**:
+- Define and export event schemas with runtime validation
+- Provide type-safe constants for topics, consumer groups, and event types
+- Offer helper functions for event creation and validation
+- Maintain backwards compatibility for event structure changes
+
+❌ **NOT Responsible For**:
+- Producing or consuming Kafka messages (handled by services)
+- Business logic or event processing
+- Database operations or persistence
+- Authentication or authorization
+
+🚫 **Do NOT**:
+- Add service-specific logic (keep schemas generic and reusable)
+- Break schema compatibility without versioning strategy
+- Include secrets or environment-specific configuration
+- Add dependencies beyond schema validation (keep lightweight)
+
+---
+
+*This file was auto-generated by Atelier. Update it as the component evolves.*
