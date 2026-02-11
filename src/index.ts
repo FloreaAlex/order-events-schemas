@@ -25,6 +25,14 @@ export type { OrderShippedEvent } from './events/order-shipped';
 export { OrderCancelledSchema } from './events/order-cancelled';
 export type { OrderCancelledEvent } from './events/order-cancelled';
 
+// Payment authorized event
+export { PaymentAuthorizedSchema } from './events/payment-authorized';
+export type { PaymentAuthorizedEvent } from './events/payment-authorized';
+
+// Payment failed event
+export { PaymentFailedSchema } from './events/payment-failed';
+export type { PaymentFailedEvent } from './events/payment-failed';
+
 // Helper functions
-export { createOrderEvent, validateEvent } from './helpers/create-event';
-export type { OrderEvent, ValidationResult } from './helpers/create-event';
+export { createOrderEvent, createPaymentEvent, validateEvent } from './helpers/create-event';
+export type { OrderEvent, PaymentEvent, AllEvents, ValidationResult } from './helpers/create-event';

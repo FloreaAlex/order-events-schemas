@@ -3,6 +3,7 @@
  */
 export const TOPICS = {
   ORDER_EVENTS: 'order.events',
+  PAYMENT_EVENTS: 'payment.events',
 } as const;
 
 /**
@@ -11,6 +12,8 @@ export const TOPICS = {
 export const CONSUMER_GROUPS = {
   NOTIFICATION_WORKER: 'notification-worker-group',
   PRODUCT_SERVICE: 'product-service-group',
+  PAYMENT_SERVICE: 'payment-service-group',
+  ORDER_SERVICE: 'order-service-group',
 } as const;
 
 export type Topic = typeof TOPICS[keyof typeof TOPICS];

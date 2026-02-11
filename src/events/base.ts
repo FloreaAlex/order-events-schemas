@@ -8,6 +8,8 @@ export const EVENT_TYPES = {
   ORDER_CONFIRMED: 'order.confirmed',
   ORDER_SHIPPED: 'order.shipped',
   ORDER_CANCELLED: 'order.cancelled',
+  PAYMENT_AUTHORIZED: 'payment.authorized',
+  PAYMENT_FAILED: 'payment.failed',
 } as const;
 
 export type EventType = typeof EVENT_TYPES[keyof typeof EVENT_TYPES];
@@ -21,6 +23,8 @@ export const BaseEventSchema = z.object({
     EVENT_TYPES.ORDER_CONFIRMED,
     EVENT_TYPES.ORDER_SHIPPED,
     EVENT_TYPES.ORDER_CANCELLED,
+    EVENT_TYPES.PAYMENT_AUTHORIZED,
+    EVENT_TYPES.PAYMENT_FAILED,
   ]),
   orderId: z.number().int().positive(),
   userId: z.number().int().positive(),

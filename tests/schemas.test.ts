@@ -7,18 +7,24 @@ import {
   OrderConfirmedSchema,
   OrderShippedSchema,
   OrderCancelledSchema,
+  PaymentAuthorizedSchema,
+  PaymentFailedSchema,
   createOrderEvent,
+  createPaymentEvent,
   validateEvent,
 } from '../src';
 
 describe('Constants', () => {
   test('TOPICS exports correct values', () => {
     expect(TOPICS.ORDER_EVENTS).toBe('order.events');
+    expect(TOPICS.PAYMENT_EVENTS).toBe('payment.events');
   });
 
   test('CONSUMER_GROUPS exports correct values', () => {
     expect(CONSUMER_GROUPS.NOTIFICATION_WORKER).toBe('notification-worker-group');
     expect(CONSUMER_GROUPS.PRODUCT_SERVICE).toBe('product-service-group');
+    expect(CONSUMER_GROUPS.PAYMENT_SERVICE).toBe('payment-service-group');
+    expect(CONSUMER_GROUPS.ORDER_SERVICE).toBe('order-service-group');
   });
 
   test('EVENT_TYPES exports correct values', () => {
@@ -26,6 +32,8 @@ describe('Constants', () => {
     expect(EVENT_TYPES.ORDER_CONFIRMED).toBe('order.confirmed');
     expect(EVENT_TYPES.ORDER_SHIPPED).toBe('order.shipped');
     expect(EVENT_TYPES.ORDER_CANCELLED).toBe('order.cancelled');
+    expect(EVENT_TYPES.PAYMENT_AUTHORIZED).toBe('payment.authorized');
+    expect(EVENT_TYPES.PAYMENT_FAILED).toBe('payment.failed');
   });
 });
 
@@ -452,5 +460,287 @@ describe('validateEvent', () => {
 
     const result = validateEvent(event);
     expect(result.success).toBe(true);
+  });
+});
+
+describe('PaymentAuthorizedSchema', () => {
+  const validEvent = {
+    type: EVENT_TYPES.PAYMENT_AUTHORIZED,
+    orderId: 1,
+    userId: 100,
+    correlationId: randomUUID(),
+    timestamp: new Date().toISOString(),
+    data: {
+      transactionId: 'txn_123456',
+      amount: 49.99,
+      currency: 'USD',
+    },
+  };
+
+  test('validates correct payment.authorized event', () => {
+    expect(() => PaymentAuthorizedSchema.parse(validEvent)).not.toThrow();
+  });
+
+  test('rejects payment.authorized event with negative amount', () => {
+    const invalidEvent = { ...validEvent, data: { ...validEvent.data, amount: -10 } };
+    expect(() => PaymentAuthorizedSchema.parse(invalidEvent)).toThrow();
+  });
+
+  test('rejects payment.authorized event with zero amount', () => {
+    const invalidEvent = { ...validEvent, data: { ...validEvent.data, amount: 0 } };
+    expect(() => PaymentAuthorizedSchema.parse(invalidEvent)).toThrow();
+  });
+
+  test('rejects payment.authorized event with missing transactionId', () => {
+    const invalidEvent = { ...validEvent, data: { amount: 49.99, currency: 'USD' } };
+    expect(() => PaymentAuthorizedSchema.parse(invalidEvent)).toThrow();
+  });
+
+  test('rejects payment.authorized event with wrong event type', () => {
+    const invalidEvent = { ...validEvent, type: EVENT_TYPES.ORDER_CREATED };
+    expect(() => PaymentAuthorizedSchema.parse(invalidEvent)).toThrow();
+  });
+
+  test('rejects payment.authorized event with invalid orderId (zero)', () => {
+    const invalidEvent = { ...validEvent, orderId: 0 };
+    expect(() => PaymentAuthorizedSchema.parse(invalidEvent)).toThrow();
+  });
+
+  test('rejects payment.authorized event with empty transactionId', () => {
+    const invalidEvent = { ...validEvent, data: { ...validEvent.data, transactionId: '' } };
+    expect(() => PaymentAuthorizedSchema.parse(invalidEvent)).toThrow();
+  });
+
+  test('rejects payment.authorized event with empty currency', () => {
+    const invalidEvent = { ...validEvent, data: { ...validEvent.data, currency: '' } };
+    expect(() => PaymentAuthorizedSchema.parse(invalidEvent)).toThrow();
+  });
+});
+
+describe('PaymentFailedSchema', () => {
+  const validEvent = {
+    type: EVENT_TYPES.PAYMENT_FAILED,
+    orderId: 1,
+    userId: 100,
+    correlationId: randomUUID(),
+    timestamp: new Date().toISOString(),
+    data: {
+      reason: 'Insufficient funds',
+      retryable: true,
+    },
+  };
+
+  test('validates correct payment.failed event', () => {
+    expect(() => PaymentFailedSchema.parse(validEvent)).not.toThrow();
+  });
+
+  test('validates payment.failed event with retryable=false', () => {
+    const nonRetryableEvent = { ...validEvent, data: { ...validEvent.data, retryable: false } };
+    expect(() => PaymentFailedSchema.parse(nonRetryableEvent)).not.toThrow();
+  });
+
+  test('rejects payment.failed event with missing reason', () => {
+    const invalidEvent = { ...validEvent, data: { retryable: true } };
+    expect(() => PaymentFailedSchema.parse(invalidEvent)).toThrow();
+  });
+
+  test('rejects payment.failed event with missing retryable', () => {
+    const invalidEvent = { ...validEvent, data: { reason: 'Insufficient funds' } };
+    expect(() => PaymentFailedSchema.parse(invalidEvent)).toThrow();
+  });
+
+  test('rejects payment.failed event with wrong event type', () => {
+    const invalidEvent = { ...validEvent, type: EVENT_TYPES.PAYMENT_AUTHORIZED };
+    expect(() => PaymentFailedSchema.parse(invalidEvent)).toThrow();
+  });
+
+  test('rejects payment.failed event with invalid correlationId (not UUID)', () => {
+    const invalidEvent = { ...validEvent, correlationId: 'not-a-uuid' };
+    expect(() => PaymentFailedSchema.parse(invalidEvent)).toThrow();
+  });
+
+  test('rejects payment.failed event with empty reason', () => {
+    const invalidEvent = { ...validEvent, data: { ...validEvent.data, reason: '' } };
+    expect(() => PaymentFailedSchema.parse(invalidEvent)).toThrow();
+  });
+});
+
+describe('createPaymentEvent', () => {
+  test('creates valid payment.authorized event with auto-generated correlationId and timestamp', () => {
+    const event = createPaymentEvent(EVENT_TYPES.PAYMENT_AUTHORIZED, {
+      orderId: 1,
+      userId: 100,
+      data: {
+        transactionId: 'txn_abc123',
+        amount: 99.99,
+        currency: 'USD',
+      },
+    });
+
+    expect(event.type).toBe(EVENT_TYPES.PAYMENT_AUTHORIZED);
+    expect(event.orderId).toBe(1);
+    expect(event.userId).toBe(100);
+    expect(event.correlationId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
+    expect(event.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+    if (event.type === EVENT_TYPES.PAYMENT_AUTHORIZED) {
+      expect(event.data.transactionId).toBe('txn_abc123');
+      expect(event.data.amount).toBe(99.99);
+      expect(event.data.currency).toBe('USD');
+    }
+  });
+
+  test('creates valid payment.failed event', () => {
+    const event = createPaymentEvent(EVENT_TYPES.PAYMENT_FAILED, {
+      orderId: 1,
+      userId: 100,
+      data: {
+        reason: 'Card declined',
+        retryable: false,
+      },
+    });
+
+    expect(event.type).toBe(EVENT_TYPES.PAYMENT_FAILED);
+    if (event.type === EVENT_TYPES.PAYMENT_FAILED) {
+      expect(event.data.reason).toBe('Card declined');
+      expect(event.data.retryable).toBe(false);
+    }
+  });
+
+  test('respects provided correlationId', () => {
+    const customCorrelationId = randomUUID();
+    const event = createPaymentEvent(EVENT_TYPES.PAYMENT_AUTHORIZED, {
+      orderId: 1,
+      userId: 100,
+      correlationId: customCorrelationId,
+      data: {
+        transactionId: 'txn_123',
+        amount: 10,
+        currency: 'EUR',
+      },
+    });
+
+    expect(event.correlationId).toBe(customCorrelationId);
+  });
+
+  test('respects provided timestamp', () => {
+    const customTimestamp = '2026-01-01T00:00:00.000Z';
+    const event = createPaymentEvent(EVENT_TYPES.PAYMENT_FAILED, {
+      orderId: 1,
+      userId: 100,
+      timestamp: customTimestamp,
+      data: {
+        reason: 'Timeout',
+        retryable: true,
+      },
+    });
+
+    expect(event.timestamp).toBe(customTimestamp);
+  });
+
+  test('throws ZodError for invalid data (negative amount)', () => {
+    expect(() => {
+      createPaymentEvent(EVENT_TYPES.PAYMENT_AUTHORIZED, {
+        orderId: 1,
+        userId: 100,
+        data: {
+          transactionId: 'txn_123',
+          amount: -50,
+          currency: 'USD',
+        },
+      });
+    }).toThrow();
+  });
+
+  test('throws error for unknown event type', () => {
+    expect(() => {
+      createPaymentEvent('unknown.payment' as any, {
+        orderId: 1,
+        userId: 100,
+        data: {
+          transactionId: 'txn_test',
+          amount: 10,
+          currency: 'USD',
+        },
+      } as any);
+    }).toThrow('Unknown event type');
+  });
+});
+
+describe('validateEvent with payment events', () => {
+  test('returns success for valid payment.authorized event', () => {
+    const event = {
+      type: EVENT_TYPES.PAYMENT_AUTHORIZED,
+      orderId: 1,
+      userId: 100,
+      correlationId: randomUUID(),
+      timestamp: new Date().toISOString(),
+      data: {
+        transactionId: 'txn_456',
+        amount: 75.50,
+        currency: 'GBP',
+      },
+    };
+
+    const result = validateEvent(event);
+    expect(result.success).toBe(true);
+    expect(result.data).toEqual(event);
+    expect(result.error).toBeUndefined();
+  });
+
+  test('returns success for valid payment.failed event', () => {
+    const event = {
+      type: EVENT_TYPES.PAYMENT_FAILED,
+      orderId: 1,
+      userId: 100,
+      correlationId: randomUUID(),
+      timestamp: new Date().toISOString(),
+      data: {
+        reason: 'Network error',
+        retryable: true,
+      },
+    };
+
+    const result = validateEvent(event);
+    expect(result.success).toBe(true);
+    expect(result.data).toEqual(event);
+    expect(result.error).toBeUndefined();
+  });
+
+  test('returns failure for invalid payment.authorized event (negative amount)', () => {
+    const event = {
+      type: EVENT_TYPES.PAYMENT_AUTHORIZED,
+      orderId: 1,
+      userId: 100,
+      correlationId: randomUUID(),
+      timestamp: new Date().toISOString(),
+      data: {
+        transactionId: 'txn_789',
+        amount: -10,
+        currency: 'USD',
+      },
+    };
+
+    const result = validateEvent(event);
+    expect(result.success).toBe(false);
+    expect(result.data).toBeUndefined();
+    expect(result.error).toBeInstanceOf(Error);
+  });
+
+  test('returns failure for invalid payment.failed event (missing reason)', () => {
+    const event = {
+      type: EVENT_TYPES.PAYMENT_FAILED,
+      orderId: 1,
+      userId: 100,
+      correlationId: randomUUID(),
+      timestamp: new Date().toISOString(),
+      data: {
+        retryable: true,
+      },
+    };
+
+    const result = validateEvent(event);
+    expect(result.success).toBe(false);
+    expect(result.data).toBeUndefined();
+    expect(result.error).toBeInstanceOf(Error);
   });
 });
