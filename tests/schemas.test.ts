@@ -25,6 +25,7 @@ describe('Constants', () => {
     expect(CONSUMER_GROUPS.PRODUCT_SERVICE).toBe('product-service-group');
     expect(CONSUMER_GROUPS.PAYMENT_SERVICE).toBe('payment-service-group');
     expect(CONSUMER_GROUPS.ORDER_SERVICE).toBe('order-service-group');
+    expect(CONSUMER_GROUPS.ANALYTICS_SERVICE).toBe('analytics-service-group');
   });
 
   test('EVENT_TYPES exports correct values', () => {

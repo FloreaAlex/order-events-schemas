@@ -62,7 +62,7 @@ Defines contracts for Kafka-based order lifecycle events. Topics and consumer gr
 
 **Message Queues**: 
 - Kafka topics: `order.events`, `payment.events`
-- Consumer groups: `notification-worker-group`, `product-service-group`, `payment-service-group`, `order-service-group`
+- Consumer groups: `notification-worker-group`, `product-service-group`, `payment-service-group`, `order-service-group`, `analytics-service-group`
 
 **Databases**: None (library does not interact with databases)
 
@@ -89,6 +89,7 @@ Defines contracts for Kafka-based order lifecycle events. Topics and consumer gr
 - `PRODUCT_SERVICE: 'product-service-group'`
 - `PAYMENT_SERVICE: 'payment-service-group'`
 - `ORDER_SERVICE: 'order-service-group'`
+- `ANALYTICS_SERVICE: 'analytics-service-group'`
 
 ### Exported Schemas
 

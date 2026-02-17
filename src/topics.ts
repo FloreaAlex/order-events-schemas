@@ -14,6 +14,7 @@ export const CONSUMER_GROUPS = {
   PRODUCT_SERVICE: 'product-service-group',
   PAYMENT_SERVICE: 'payment-service-group',
   ORDER_SERVICE: 'order-service-group',
+  ANALYTICS_SERVICE: 'analytics-service-group',
 } as const;
 
 export type Topic = typeof TOPICS[keyof typeof TOPICS];
