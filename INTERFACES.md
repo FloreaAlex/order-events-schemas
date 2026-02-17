@@ -17,7 +17,7 @@
 |------|------|-------------|
 | EVENT_TYPES | constant | Event type string constants (ORDER_CREATED, ORDER_CONFIRMED, ORDER_SHIPPED, ORDER_CANCELLED, PAYMENT_AUTHORIZED, PAYMENT_FAILED) |
 | TOPICS | constant | Kafka topic name constants (ORDER_EVENTS: 'order.events', PAYMENT_EVENTS: 'payment.events') |
-| CONSUMER_GROUPS | constant | Kafka consumer group name constants (NOTIFICATION_WORKER, PRODUCT_SERVICE, PAYMENT_SERVICE, ORDER_SERVICE) |
+| CONSUMER_GROUPS | constant | Kafka consumer group name constants (NOTIFICATION_WORKER, PRODUCT_SERVICE, PAYMENT_SERVICE, ORDER_SERVICE, ANALYTICS_SERVICE) |
 | BaseEventSchema | schema | Zod schema for base event structure with common fields (type, orderId, userId, correlationId, timestamp) |
 | OrderItemSchema | schema | Zod schema for order item (productId, quantity, price) |
 | OrderCreatedSchema | schema | Zod schema for order.created event |
