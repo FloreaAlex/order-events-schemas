@@ -214,6 +214,56 @@ describe('OrderCancelledSchema', () => {
     const invalidEvent = { ...validEvent, data: { ...validEvent.data, refundAmount: -10 } };
     expect(() => OrderCancelledSchema.parse(invalidEvent)).toThrow();
   });
+
+  test('validates order.cancelled event with new optional fields (items, totalAmount, previousStatus)', () => {
+    const eventWithNewFields = {
+      ...validEvent,
+      data: {
+        ...validEvent.data,
+        items: [{ productId: 1, quantity: 2, price: 19.99 }],
+        totalAmount: 39.98,
+        previousStatus: 'confirmed' as const,
+      },
+    };
+    expect(() => OrderCancelledSchema.parse(eventWithNewFields)).not.toThrow();
+  });
+
+  test('validates order.cancelled event with previousStatus=created', () => {
+    const eventWithCreatedStatus = {
+      ...validEvent,
+      data: {
+        ...validEvent.data,
+        previousStatus: 'created' as const,
+      },
+    };
+    expect(() => OrderCancelledSchema.parse(eventWithCreatedStatus)).not.toThrow();
+  });
+
+  test('validates order.cancelled event without new optional fields (backward compat)', () => {
+    // The original validEvent without items, totalAmount, or previousStatus must still pass
+    expect(() => OrderCancelledSchema.parse(validEvent)).not.toThrow();
+  });
+
+  test('rejects order.cancelled event with invalid previousStatus value', () => {
+    const invalidEvent = { ...validEvent, data: { ...validEvent.data, previousStatus: 'shipped' } };
+    expect(() => OrderCancelledSchema.parse(invalidEvent)).toThrow();
+  });
+
+  test('rejects order.cancelled event with invalid item in items array (negative price)', () => {
+    const invalidEvent = {
+      ...validEvent,
+      data: {
+        ...validEvent.data,
+        items: [{ productId: 1, quantity: 1, price: -5 }],
+      },
+    };
+    expect(() => OrderCancelledSchema.parse(invalidEvent)).toThrow();
+  });
+
+  test('rejects order.cancelled event with zero totalAmount', () => {
+    const invalidEvent = { ...validEvent, data: { ...validEvent.data, totalAmount: 0 } };
+    expect(() => OrderCancelledSchema.parse(invalidEvent)).toThrow();
+  });
 });
 
 describe('createOrderEvent', () => {
@@ -284,6 +334,29 @@ describe('createOrderEvent', () => {
     if (event.type === EVENT_TYPES.ORDER_CANCELLED) {
       expect(event.data.reason).toBe('Out of stock');
       expect(event.data.cancelledBy).toBe('system');
+    }
+  });
+
+  test('creates valid order.cancelled event with new fields (items, totalAmount, previousStatus)', () => {
+    const event = createOrderEvent(EVENT_TYPES.ORDER_CANCELLED, {
+      orderId: 1,
+      userId: 100,
+      data: {
+        reason: 'Customer requested cancellation',
+        cancelledBy: 'user',
+        items: [{ productId: 3, quantity: 1, price: 29.99 }],
+        totalAmount: 29.99,
+        previousStatus: 'confirmed',
+      },
+    });
+
+    expect(event.type).toBe(EVENT_TYPES.ORDER_CANCELLED);
+    if (event.type === EVENT_TYPES.ORDER_CANCELLED) {
+      expect(event.data.reason).toBe('Customer requested cancellation');
+      expect(event.data.cancelledBy).toBe('user');
+      expect(event.data.items).toHaveLength(1);
+      expect(event.data.totalAmount).toBe(29.99);
+      expect(event.data.previousStatus).toBe('confirmed');
     }
   });
 
@@ -456,6 +529,26 @@ describe('validateEvent', () => {
       data: {
         reason: 'User requested',
         cancelledBy: 'user',
+      },
+    };
+
+    const result = validateEvent(event);
+    expect(result.success).toBe(true);
+  });
+
+  test('returns success for valid order.cancelled event with new optional fields', () => {
+    const event = {
+      type: EVENT_TYPES.ORDER_CANCELLED,
+      orderId: 5,
+      userId: 200,
+      correlationId: randomUUID(),
+      timestamp: new Date().toISOString(),
+      data: {
+        reason: 'Customer requested cancellation',
+        cancelledBy: 'user',
+        items: [{ productId: 2, quantity: 3, price: 9.99 }],
+        totalAmount: 29.97,
+        previousStatus: 'confirmed',
       },
     };
 

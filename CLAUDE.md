@@ -45,7 +45,7 @@ Defines contracts for Kafka-based order lifecycle events. Topics and consumer gr
   - `src/events/` - Event schemas (base, order-created, order-confirmed, order-shipped, order-cancelled, payment-authorized, payment-failed)
   - `src/helpers/` - Factory and validation helper functions
   - `src/topics.ts` - Kafka topic and consumer group constants
-- `tests/` - Jest test suite with comprehensive schema validation tests (64+ tests)
+- `tests/` - Jest test suite with comprehensive schema validation tests (75+ tests)
 - `dist/` - Compiled output (CommonJS module)
 
 ## Dependencies
@@ -100,7 +100,7 @@ Defines contracts for Kafka-based order lifecycle events. Topics and consumer gr
 - `OrderCreatedSchema` - order.created event
 - `OrderConfirmedSchema` - order.confirmed event
 - `OrderShippedSchema` - order.shipped event
-- `OrderCancelledSchema` - order.cancelled event
+- `OrderCancelledSchema` - order.cancelled event — data: reason (string), cancelledBy (user|system|admin), refundAmount? (number), items? (OrderItem[]), totalAmount? (number), previousStatus? ('created'|'confirmed')
 
 **Payment Event Schemas**:
 - `PaymentAuthorizedSchema` - payment.authorized event
