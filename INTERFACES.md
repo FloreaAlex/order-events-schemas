@@ -7,7 +7,7 @@
 | publish | order.events | order.created | { items: OrderItem[], totalAmount: number, shippingAddress?: string } | New order placed with items, total amount, and optional shipping address |
 | publish | order.events | order.confirmed | { items: OrderItem[], totalAmount: number, paymentId?: string } | Payment verified and order confirmed with optional payment ID |
 | publish | order.events | order.shipped | { trackingNumber?: string, carrier?: string, estimatedDelivery?: string } | Order dispatched with optional tracking information |
-| publish | order.events | order.cancelled | { reason: string, cancelledBy: 'user'\|'system'\|'admin', refundAmount?: number } | Order cancelled with reason, cancellation source, and optional refund amount |
+| publish | order.events | order.cancelled | { reason: string, cancelledBy: 'user'\|'system'\|'admin', refundAmount?: number, items?: OrderItem[], totalAmount?: number, previousStatus?: 'created'\|'confirmed' } | Order cancelled with reason, cancellation source, optional refund, optional items/total for restoration context, and optional previous status for inventory management |
 | publish | payment.events | payment.authorized | { transactionId: string, amount: number, currency: string } | Payment successfully authorized with transaction details |
 | publish | payment.events | payment.failed | { reason: string, retryable: boolean } | Payment authorization failed with failure reason and retry flag |
 
