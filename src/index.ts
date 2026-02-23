@@ -2,37 +2,68 @@
 // Shared TypeScript library for Kafka event schemas
 
 // Constants
-export { TOPICS, CONSUMER_GROUPS } from './topics';
-export type { Topic, ConsumerGroup } from './topics';
+export { TOPICS, CONSUMER_GROUPS } from "./topics";
+export type { Topic, ConsumerGroup } from "./topics";
 
 // Base event types and schemas
-export { EVENT_TYPES, BaseEventSchema } from './events/base';
-export type { EventType, BaseEvent } from './events/base';
+export { EVENT_TYPES, BaseEventSchema } from "./events/base";
+export type { EventType, BaseEvent } from "./events/base";
 
 // Order created event
-export { OrderItemSchema, OrderCreatedSchema } from './events/order-created';
-export type { OrderItem, OrderCreatedEvent } from './events/order-created';
+export { OrderItemSchema, OrderCreatedSchema } from "./events/order-created";
+export type { OrderItem, OrderCreatedEvent } from "./events/order-created";
 
 // Order confirmed event
-export { OrderConfirmedSchema } from './events/order-confirmed';
-export type { OrderConfirmedEvent } from './events/order-confirmed';
+export { OrderConfirmedSchema } from "./events/order-confirmed";
+export type { OrderConfirmedEvent } from "./events/order-confirmed";
 
 // Order shipped event
-export { OrderShippedSchema } from './events/order-shipped';
-export type { OrderShippedEvent } from './events/order-shipped';
+export { OrderShippedSchema } from "./events/order-shipped";
+export type { OrderShippedEvent } from "./events/order-shipped";
 
 // Order cancelled event
-export { OrderCancelledSchema } from './events/order-cancelled';
-export type { OrderCancelledEvent } from './events/order-cancelled';
+export { OrderCancelledSchema } from "./events/order-cancelled";
+export type { OrderCancelledEvent } from "./events/order-cancelled";
 
 // Payment authorized event
-export { PaymentAuthorizedSchema } from './events/payment-authorized';
-export type { PaymentAuthorizedEvent } from './events/payment-authorized';
+export { PaymentAuthorizedSchema } from "./events/payment-authorized";
+export type { PaymentAuthorizedEvent } from "./events/payment-authorized";
 
 // Payment failed event
-export { PaymentFailedSchema } from './events/payment-failed';
-export type { PaymentFailedEvent } from './events/payment-failed';
+export { PaymentFailedSchema } from "./events/payment-failed";
+export type { PaymentFailedEvent } from "./events/payment-failed";
 
 // Helper functions
-export { createOrderEvent, createPaymentEvent, validateEvent } from './helpers/create-event';
-export type { OrderEvent, PaymentEvent, AllEvents, ValidationResult } from './helpers/create-event';
+export {
+  createOrderEvent,
+  createPaymentEvent,
+  validateEvent,
+} from "./helpers/create-event";
+export type {
+  OrderEvent,
+  PaymentEvent,
+  AllEvents,
+  ValidationResult,
+} from "./helpers/create-event";
+
+// Product events (product.events topic)
+export {
+  ProductCreatedSchema,
+  ProductUpdatedSchema,
+  ProductDeletedSchema,
+  createProductCreatedEvent,
+  createProductUpdatedEvent,
+  createProductDeletedEvent,
+} from "./events/product-events";
+export type {
+  ProductCreatedEvent,
+  ProductUpdatedEvent,
+  ProductDeletedEvent,
+} from "./events/product-events";
+
+// Search events (search.events topic)
+export {
+  SearchExecutedSchema,
+  createSearchExecutedEvent,
+} from "./events/search-events";
+export type { SearchExecutedEvent } from "./events/search-events";

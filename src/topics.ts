@@ -2,20 +2,24 @@
  * Kafka topic constants
  */
 export const TOPICS = {
-  ORDER_EVENTS: 'order.events',
-  PAYMENT_EVENTS: 'payment.events',
+  ORDER_EVENTS: "order.events",
+  PAYMENT_EVENTS: "payment.events",
+  PRODUCT_EVENTS: "product.events",
+  SEARCH_EVENTS: "search.events",
 } as const;
 
 /**
  * Kafka consumer group constants
  */
 export const CONSUMER_GROUPS = {
-  NOTIFICATION_WORKER: 'notification-worker-group',
-  PRODUCT_SERVICE: 'product-service-group',
-  PAYMENT_SERVICE: 'payment-service-group',
-  ORDER_SERVICE: 'order-service-group',
-  ANALYTICS_SERVICE: 'analytics-service-group',
+  NOTIFICATION_WORKER: "notification-worker-group",
+  PRODUCT_SERVICE: "product-service-group",
+  PAYMENT_SERVICE: "payment-service-group",
+  ORDER_SERVICE: "order-service-group",
+  ANALYTICS_SERVICE: "analytics-service-group",
+  SEARCH_INDEXER: "search-indexer",
 } as const;
 
-export type Topic = typeof TOPICS[keyof typeof TOPICS];
-export type ConsumerGroup = typeof CONSUMER_GROUPS[keyof typeof CONSUMER_GROUPS];
+export type Topic = (typeof TOPICS)[keyof typeof TOPICS];
+export type ConsumerGroup =
+  (typeof CONSUMER_GROUPS)[keyof typeof CONSUMER_GROUPS];
