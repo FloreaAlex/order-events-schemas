@@ -36,3 +36,22 @@ export type { PaymentFailedEvent } from './events/payment-failed';
 // Helper functions
 export { createOrderEvent, createPaymentEvent, validateEvent } from './helpers/create-event';
 export type { OrderEvent, PaymentEvent, AllEvents, ValidationResult } from './helpers/create-event';
+
+// Product events (product.events topic)
+export {
+  ProductCreatedSchema,
+  ProductUpdatedSchema,
+  ProductDeletedSchema,
+  createProductCreatedEvent,
+  createProductUpdatedEvent,
+  createProductDeletedEvent,
+} from './events/product-events';
+export type {
+  ProductCreatedEvent,
+  ProductUpdatedEvent,
+  ProductDeletedEvent,
+} from './events/product-events';
+
+// Search events (search.events topic)
+export { SearchExecutedSchema, createSearchExecutedEvent } from './events/search-events';
+export type { SearchExecutedEvent } from './events/search-events';

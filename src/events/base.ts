@@ -10,6 +10,12 @@ export const EVENT_TYPES = {
   ORDER_CANCELLED: 'order.cancelled',
   PAYMENT_AUTHORIZED: 'payment.authorized',
   PAYMENT_FAILED: 'payment.failed',
+  // Product lifecycle event types (product.events topic)
+  PRODUCT_CREATED: 'product.created',
+  PRODUCT_UPDATED: 'product.updated',
+  PRODUCT_DELETED: 'product.deleted',
+  // Search analytics event type (search.events topic)
+  SEARCH_EXECUTED: 'search.executed',
 } as const;
 
 export type EventType = typeof EVENT_TYPES[keyof typeof EVENT_TYPES];

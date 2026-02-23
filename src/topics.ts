@@ -4,6 +4,8 @@
 export const TOPICS = {
   ORDER_EVENTS: 'order.events',
   PAYMENT_EVENTS: 'payment.events',
+  PRODUCT_EVENTS: 'product.events',
+  SEARCH_EVENTS: 'search.events',
 } as const;
 
 /**
@@ -15,6 +17,7 @@ export const CONSUMER_GROUPS = {
   PAYMENT_SERVICE: 'payment-service-group',
   ORDER_SERVICE: 'order-service-group',
   ANALYTICS_SERVICE: 'analytics-service-group',
+  SEARCH_INDEXER: 'search-indexer',
 } as const;
 
 export type Topic = typeof TOPICS[keyof typeof TOPICS];

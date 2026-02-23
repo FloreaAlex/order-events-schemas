@@ -10,14 +10,18 @@
 | publish | order.events | order.cancelled | { reason: string, cancelledBy: 'user'\|'system'\|'admin', refundAmount?: number, items?: OrderItem[], totalAmount?: number, previousStatus?: 'created'\|'confirmed' } | Order cancelled with reason, cancellation source, optional refund, optional items/total for restoration context, and optional previous status for inventory management |
 | publish | payment.events | payment.authorized | { transactionId: string, amount: number, currency: string } | Payment successfully authorized with transaction details |
 | publish | payment.events | payment.failed | { reason: string, retryable: boolean } | Payment authorization failed with failure reason and retry flag |
+| publish | product.events | product.created | { id: UUID, name: string, description: string, price: number, averageRating: number, categoryIds: string[], categoryNames: string[], tags: string[], inStock: boolean, imageUrl?: string, createdAt: ISO string, updatedAt: ISO string } | Product created — full document for search indexing |
+| publish | product.events | product.updated | { id: UUID, name: string, description: string, price: number, averageRating: number, categoryIds: string[], categoryNames: string[], tags: string[], inStock: boolean, imageUrl?: string, createdAt: ISO string, updatedAt: ISO string } | Product updated — full document for search re-indexing |
+| publish | product.events | product.deleted | { id: UUID, deletedAt: ISO string } | Product deleted — ID only, consumers remove the document |
+| publish | search.events | search.executed | { query: string, resultCount: number, facetsApplied: Record<string, string[]>, userId?: string, responseTimeMs: number } | Search query executed — used for analytics aggregation |
 
 ## Exports
 
 | Name | Kind | Description |
 |------|------|-------------|
-| EVENT_TYPES | constant | Event type string constants (ORDER_CREATED, ORDER_CONFIRMED, ORDER_SHIPPED, ORDER_CANCELLED, PAYMENT_AUTHORIZED, PAYMENT_FAILED) |
-| TOPICS | constant | Kafka topic name constants (ORDER_EVENTS: 'order.events', PAYMENT_EVENTS: 'payment.events') |
-| CONSUMER_GROUPS | constant | Kafka consumer group name constants (NOTIFICATION_WORKER, PRODUCT_SERVICE, PAYMENT_SERVICE, ORDER_SERVICE, ANALYTICS_SERVICE) |
+| EVENT_TYPES | constant | Event type string constants (ORDER_CREATED, ORDER_CONFIRMED, ORDER_SHIPPED, ORDER_CANCELLED, PAYMENT_AUTHORIZED, PAYMENT_FAILED, PRODUCT_CREATED, PRODUCT_UPDATED, PRODUCT_DELETED, SEARCH_EXECUTED) |
+| TOPICS | constant | Kafka topic name constants (ORDER_EVENTS: 'order.events', PAYMENT_EVENTS: 'payment.events', PRODUCT_EVENTS: 'product.events', SEARCH_EVENTS: 'search.events') |
+| CONSUMER_GROUPS | constant | Kafka consumer group name constants (NOTIFICATION_WORKER, PRODUCT_SERVICE, PAYMENT_SERVICE, ORDER_SERVICE, ANALYTICS_SERVICE, SEARCH_INDEXER: 'search-indexer') |
 | BaseEventSchema | schema | Zod schema for base event structure with common fields (type, orderId, userId, correlationId, timestamp) |
 | OrderItemSchema | schema | Zod schema for order item (productId, quantity, price) |
 | OrderCreatedSchema | schema | Zod schema for order.created event |
@@ -26,9 +30,17 @@
 | OrderCancelledSchema | schema | Zod schema for order.cancelled event |
 | PaymentAuthorizedSchema | schema | Zod schema for payment.authorized event |
 | PaymentFailedSchema | schema | Zod schema for payment.failed event |
+| ProductCreatedSchema | schema | Zod schema for product.created event (eventId, type, timestamp, payload with full product data) |
+| ProductUpdatedSchema | schema | Zod schema for product.updated event (same payload structure as ProductCreatedSchema) |
+| ProductDeletedSchema | schema | Zod schema for product.deleted event (eventId, type, timestamp, payload: { id, deletedAt }) |
+| SearchExecutedSchema | schema | Zod schema for search.executed event (eventId, type, timestamp, payload: { query, resultCount, facetsApplied, userId?, responseTimeMs }) |
 | createOrderEvent | function | Factory function to create and validate order events with auto-generated correlationId and timestamp |
 | createPaymentEvent | function | Factory function to create and validate payment events with auto-generated correlationId and timestamp |
 | validateEvent | function | Safe validation function that returns { success, data?, error? } without throwing |
+| createProductCreatedEvent | function | Factory function for product.created — takes payload, auto-generates eventId (UUID v4) and timestamp |
+| createProductUpdatedEvent | function | Factory function for product.updated — takes payload, auto-generates eventId (UUID v4) and timestamp |
+| createProductDeletedEvent | function | Factory function for product.deleted — takes { id, deletedAt } payload, auto-generates eventId and timestamp |
+| createSearchExecutedEvent | function | Factory function for search.executed — takes payload, auto-generates eventId (UUID v4) and timestamp |
 | EventType | type | Union type of all event type strings |
 | BaseEvent | type | Base event structure with common fields |
 | OrderItem | type | Order item structure (productId, quantity, price) |
@@ -38,6 +50,10 @@
 | OrderCancelledEvent | type | Complete order.cancelled event type |
 | PaymentAuthorizedEvent | type | Complete payment.authorized event type |
 | PaymentFailedEvent | type | Complete payment.failed event type |
+| ProductCreatedEvent | type | Complete product.created event type |
+| ProductUpdatedEvent | type | Complete product.updated event type |
+| ProductDeletedEvent | type | Complete product.deleted event type |
+| SearchExecutedEvent | type | Complete search.executed event type |
 | OrderEvent | type | Union type of all order events |
 | PaymentEvent | type | Union type of all payment events |
 | AllEvents | type | Union type of all events (order + payment) |
