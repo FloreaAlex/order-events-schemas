@@ -913,6 +913,11 @@ describe('OrderReturnRequestedSchema', () => {
     expect(() => OrderReturnRequestedSchema.parse(eventWithoutReason)).not.toThrow();
   });
 
+  test('rejects order.return_requested event with empty reason string', () => {
+    const invalidEvent = { ...validEvent, data: { ...validEvent.data, reason: '' } };
+    expect(() => OrderReturnRequestedSchema.parse(invalidEvent)).toThrow();
+  });
+
   test('rejects order.return_requested event with empty category', () => {
     const invalidEvent = { ...validEvent, data: { ...validEvent.data, category: '' } };
     expect(() => OrderReturnRequestedSchema.parse(invalidEvent)).toThrow();

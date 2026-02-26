@@ -7,7 +7,7 @@ import { OrderItemSchema } from './order-created';
  */
 const OrderReturnRequestedDataSchema = z.object({
   category: z.string().min(1),
-  reason: z.string().optional(),
+  reason: z.string().min(1).optional(),
   items: z.array(OrderItemSchema).min(1),
   totalAmount: z.number().positive(),
 });

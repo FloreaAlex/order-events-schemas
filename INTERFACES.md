@@ -8,8 +8,14 @@
 | publish | order.events | order.confirmed | { items: OrderItem[], totalAmount: number, paymentId?: string } | Payment verified and order confirmed with optional payment ID |
 | publish | order.events | order.shipped | { trackingNumber?: string, carrier?: string, estimatedDelivery?: string } | Order dispatched with optional tracking information |
 | publish | order.events | order.cancelled | { reason: string, cancelledBy: 'user'\|'system'\|'admin', refundAmount?: number, items?: OrderItem[], totalAmount?: number, previousStatus?: 'created'\|'confirmed' } | Order cancelled with reason, cancellation source, optional refund, optional items/total for restoration context, and optional previous status for inventory management |
+| publish | order.events | order.delivered | { items: OrderItem[], totalAmount: number } | Order delivered to customer with items and total |
+| publish | order.events | order.return_requested | { category: string, reason?: string, items: OrderItem[], totalAmount: number } | Customer requested return with category, optional reason, items, and total |
+| publish | order.events | order.return_approved | { items: OrderItem[], totalAmount: number } | Return approved — items included for Product Service inventory restoration |
+| publish | order.events | order.return_rejected | { adminReason: string } | Return rejected by admin with reason |
+| publish | order.events | order.return_refunded | { refundAmount: number } | Return refund processed with refund amount |
 | publish | payment.events | payment.authorized | { transactionId: string, amount: number, currency: string } | Payment successfully authorized with transaction details |
 | publish | payment.events | payment.failed | { reason: string, retryable: boolean } | Payment authorization failed with failure reason and retry flag |
+| publish | payment.events | payment.refunded | { amount: number, currency: string } | Payment refunded with amount and currency |
 | publish | product.events | product.created | { id: UUID, name: string, description: string, price: number, averageRating: number, categoryIds: string[], categoryNames: string[], tags: string[], inStock: boolean, imageUrl?: string, createdAt: ISO string, updatedAt: ISO string } | Product created — full document for search indexing |
 | publish | product.events | product.updated | { id: UUID, name: string, description: string, price: number, averageRating: number, categoryIds: string[], categoryNames: string[], tags: string[], inStock: boolean, imageUrl?: string, createdAt: ISO string, updatedAt: ISO string } | Product updated — full document for search re-indexing |
 | publish | product.events | product.deleted | { id: UUID, deletedAt: ISO string } | Product deleted — ID only, consumers remove the document |
@@ -19,7 +25,7 @@
 
 | Name | Kind | Description |
 |------|------|-------------|
-| EVENT_TYPES | constant | Event type string constants (ORDER_CREATED, ORDER_CONFIRMED, ORDER_SHIPPED, ORDER_CANCELLED, PAYMENT_AUTHORIZED, PAYMENT_FAILED, PRODUCT_CREATED, PRODUCT_UPDATED, PRODUCT_DELETED, SEARCH_EXECUTED) |
+| EVENT_TYPES | constant | Event type string constants (ORDER_CREATED, ORDER_CONFIRMED, ORDER_SHIPPED, ORDER_CANCELLED, ORDER_DELIVERED, ORDER_RETURN_REQUESTED, ORDER_RETURN_APPROVED, ORDER_RETURN_REJECTED, ORDER_RETURN_REFUNDED, PAYMENT_AUTHORIZED, PAYMENT_FAILED, PAYMENT_REFUNDED, PRODUCT_CREATED, PRODUCT_UPDATED, PRODUCT_DELETED, SEARCH_EXECUTED) |
 | TOPICS | constant | Kafka topic name constants (ORDER_EVENTS: 'order.events', PAYMENT_EVENTS: 'payment.events', PRODUCT_EVENTS: 'product.events', SEARCH_EVENTS: 'search.events') |
 | CONSUMER_GROUPS | constant | Kafka consumer group name constants (NOTIFICATION_WORKER, PRODUCT_SERVICE, PAYMENT_SERVICE, ORDER_SERVICE, ANALYTICS_SERVICE, SEARCH_INDEXER: 'search-indexer') |
 | BaseEventSchema | schema | Zod schema for base event structure with common fields (type, orderId, userId, correlationId, timestamp) |
@@ -28,8 +34,14 @@
 | OrderConfirmedSchema | schema | Zod schema for order.confirmed event |
 | OrderShippedSchema | schema | Zod schema for order.shipped event |
 | OrderCancelledSchema | schema | Zod schema for order.cancelled event |
+| OrderDeliveredSchema | schema | Zod schema for order.delivered event |
+| OrderReturnRequestedSchema | schema | Zod schema for order.return_requested event |
+| OrderReturnApprovedSchema | schema | Zod schema for order.return_approved event |
+| OrderReturnRejectedSchema | schema | Zod schema for order.return_rejected event |
+| OrderReturnRefundedSchema | schema | Zod schema for order.return_refunded event |
 | PaymentAuthorizedSchema | schema | Zod schema for payment.authorized event |
 | PaymentFailedSchema | schema | Zod schema for payment.failed event |
+| PaymentRefundedSchema | schema | Zod schema for payment.refunded event |
 | ProductCreatedSchema | schema | Zod schema for product.created event (eventId, type, timestamp, payload with full product data) |
 | ProductUpdatedSchema | schema | Zod schema for product.updated event (same payload structure as ProductCreatedSchema) |
 | ProductDeletedSchema | schema | Zod schema for product.deleted event (eventId, type, timestamp, payload: { id, deletedAt }) |
@@ -48,8 +60,14 @@
 | OrderConfirmedEvent | type | Complete order.confirmed event type |
 | OrderShippedEvent | type | Complete order.shipped event type |
 | OrderCancelledEvent | type | Complete order.cancelled event type |
+| OrderDeliveredEvent | type | Complete order.delivered event type |
+| OrderReturnRequestedEvent | type | Complete order.return_requested event type |
+| OrderReturnApprovedEvent | type | Complete order.return_approved event type |
+| OrderReturnRejectedEvent | type | Complete order.return_rejected event type |
+| OrderReturnRefundedEvent | type | Complete order.return_refunded event type |
 | PaymentAuthorizedEvent | type | Complete payment.authorized event type |
 | PaymentFailedEvent | type | Complete payment.failed event type |
+| PaymentRefundedEvent | type | Complete payment.refunded event type |
 | ProductCreatedEvent | type | Complete product.created event type |
 | ProductUpdatedEvent | type | Complete product.updated event type |
 | ProductDeletedEvent | type | Complete product.deleted event type |
