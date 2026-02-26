@@ -42,10 +42,10 @@ Defines contracts for Kafka-based order lifecycle events. Topics and consumer gr
 
 **Key Directories**:
 - `src/` - Source code
-  - `src/events/` - Event schemas (base, order-created, order-confirmed, order-shipped, order-cancelled, payment-authorized, payment-failed)
+  - `src/events/` - Event schemas (base, order-created, order-confirmed, order-shipped, order-cancelled, order-delivered, order-return-requested, order-return-approved, order-return-rejected, order-return-refunded, payment-authorized, payment-failed, payment-refunded, product-events, search-events)
   - `src/helpers/` - Factory and validation helper functions
   - `src/topics.ts` - Kafka topic and consumer group constants
-- `tests/` - Jest test suite with comprehensive schema validation tests (75+ tests)
+- `tests/` - Jest test suite with comprehensive schema validation tests (175+ tests)
 - `dist/` - Compiled output (CommonJS module)
 
 ## Dependencies
@@ -77,8 +77,14 @@ Defines contracts for Kafka-based order lifecycle events. Topics and consumer gr
 - `ORDER_CONFIRMED: 'order.confirmed'`
 - `ORDER_SHIPPED: 'order.shipped'`
 - `ORDER_CANCELLED: 'order.cancelled'`
+- `ORDER_DELIVERED: 'order.delivered'`
+- `ORDER_RETURN_REQUESTED: 'order.return_requested'`
+- `ORDER_RETURN_APPROVED: 'order.return_approved'`
+- `ORDER_RETURN_REJECTED: 'order.return_rejected'`
+- `ORDER_RETURN_REFUNDED: 'order.return_refunded'`
 - `PAYMENT_AUTHORIZED: 'payment.authorized'`
 - `PAYMENT_FAILED: 'payment.failed'`
+- `PAYMENT_REFUNDED: 'payment.refunded'`
 
 **TOPICS**:
 - `ORDER_EVENTS: 'order.events'`
@@ -101,10 +107,16 @@ Defines contracts for Kafka-based order lifecycle events. Topics and consumer gr
 - `OrderConfirmedSchema` - order.confirmed event
 - `OrderShippedSchema` - order.shipped event
 - `OrderCancelledSchema` - order.cancelled event — data: reason (string), cancelledBy (user|system|admin), refundAmount? (number), items? (OrderItem[]), totalAmount? (number), previousStatus? ('created'|'confirmed')
+- `OrderDeliveredSchema` - order.delivered event — data: items (OrderItem[]), totalAmount (number)
+- `OrderReturnRequestedSchema` - order.return_requested event — data: category (string), reason? (string), items (OrderItem[]), totalAmount (number)
+- `OrderReturnApprovedSchema` - order.return_approved event — data: items (OrderItem[]), totalAmount (number)
+- `OrderReturnRejectedSchema` - order.return_rejected event — data: adminReason (string)
+- `OrderReturnRefundedSchema` - order.return_refunded event — data: refundAmount (number)
 
 **Payment Event Schemas**:
 - `PaymentAuthorizedSchema` - payment.authorized event
 - `PaymentFailedSchema` - payment.failed event
+- `PaymentRefundedSchema` - payment.refunded event — data: amount (number), currency (string)
 
 ### Exported Helper Functions
 
@@ -118,7 +130,7 @@ Defines contracts for Kafka-based order lifecycle events. Topics and consumer gr
 
 **Base Types**: `EventType`, `BaseEvent`, `OrderItem`, `Topic`, `ConsumerGroup`
 
-**Event Types**: `OrderCreatedEvent`, `OrderConfirmedEvent`, `OrderShippedEvent`, `OrderCancelledEvent`, `PaymentAuthorizedEvent`, `PaymentFailedEvent`
+**Event Types**: `OrderCreatedEvent`, `OrderConfirmedEvent`, `OrderShippedEvent`, `OrderCancelledEvent`, `OrderDeliveredEvent`, `OrderReturnRequestedEvent`, `OrderReturnApprovedEvent`, `OrderReturnRejectedEvent`, `OrderReturnRefundedEvent`, `PaymentAuthorizedEvent`, `PaymentFailedEvent`, `PaymentRefundedEvent`
 
 **Union Types**: `OrderEvent`, `PaymentEvent`, `AllEvents`
 
@@ -127,8 +139,8 @@ Defines contracts for Kafka-based order lifecycle events. Topics and consumer gr
 ### Events Published
 
 This library does not publish events itself. It provides schemas and helpers for services to publish events to:
-- `order.events` topic: order.created, order.confirmed, order.shipped, order.cancelled
-- `payment.events` topic: payment.authorized, payment.failed
+- `order.events` topic: order.created, order.confirmed, order.shipped, order.cancelled, order.delivered, order.return_requested, order.return_approved, order.return_rejected, order.return_refunded
+- `payment.events` topic: payment.authorized, payment.failed, payment.refunded
 
 ### Events Consumed
 

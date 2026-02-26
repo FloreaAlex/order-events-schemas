@@ -73,11 +73,17 @@ if (result.success) {
 - `EVENT_TYPES.ORDER_CONFIRMED` - Payment verified
 - `EVENT_TYPES.ORDER_SHIPPED` - Order dispatched
 - `EVENT_TYPES.ORDER_CANCELLED` - Order cancelled
+- `EVENT_TYPES.ORDER_DELIVERED` - Order delivered to customer
+- `EVENT_TYPES.ORDER_RETURN_REQUESTED` - Customer requested return
+- `EVENT_TYPES.ORDER_RETURN_APPROVED` - Return approved by admin
+- `EVENT_TYPES.ORDER_RETURN_REJECTED` - Return rejected by admin
+- `EVENT_TYPES.ORDER_RETURN_REFUNDED` - Return refund processed
 
 ### Payment Events
 
 - `EVENT_TYPES.PAYMENT_AUTHORIZED` - Payment successfully authorized
 - `EVENT_TYPES.PAYMENT_FAILED` - Payment authorization failed
+- `EVENT_TYPES.PAYMENT_REFUNDED` - Payment refunded
 
 ## Topics and Consumer Groups
 
@@ -91,6 +97,8 @@ CONSUMER_GROUPS.NOTIFICATION_WORKER  // 'notification-worker-group'
 CONSUMER_GROUPS.PRODUCT_SERVICE      // 'product-service-group'
 CONSUMER_GROUPS.PAYMENT_SERVICE      // 'payment-service-group'
 CONSUMER_GROUPS.ORDER_SERVICE        // 'order-service-group'
+CONSUMER_GROUPS.ANALYTICS_SERVICE    // 'analytics-service-group'
+CONSUMER_GROUPS.SEARCH_INDEXER       // 'search-indexer'
 ```
 
 ## API Reference
@@ -230,9 +238,10 @@ ISC
 
 ## Version
 
-Current version: **0.1.0**
+Current version: **0.2.0**
 
 ### Changelog
 
+- **0.2.0**: Added return & refund event schemas (order.delivered, order.return_requested, order.return_approved, order.return_rejected, order.return_refunded, payment.refunded)
 - **0.1.0**: Added payment event schemas, new topics, new consumer groups
 - **0.0.1**: Initial release with order event schemas

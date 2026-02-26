@@ -7,8 +7,14 @@ import {
   OrderConfirmedSchema,
   OrderShippedSchema,
   OrderCancelledSchema,
+  OrderDeliveredSchema,
+  OrderReturnRequestedSchema,
+  OrderReturnApprovedSchema,
+  OrderReturnRejectedSchema,
+  OrderReturnRefundedSchema,
   PaymentAuthorizedSchema,
   PaymentFailedSchema,
+  PaymentRefundedSchema,
   createOrderEvent,
   createPaymentEvent,
   validateEvent,
@@ -35,6 +41,12 @@ describe('Constants', () => {
     expect(EVENT_TYPES.ORDER_CANCELLED).toBe('order.cancelled');
     expect(EVENT_TYPES.PAYMENT_AUTHORIZED).toBe('payment.authorized');
     expect(EVENT_TYPES.PAYMENT_FAILED).toBe('payment.failed');
+    expect(EVENT_TYPES.ORDER_DELIVERED).toBe('order.delivered');
+    expect(EVENT_TYPES.ORDER_RETURN_REQUESTED).toBe('order.return_requested');
+    expect(EVENT_TYPES.ORDER_RETURN_APPROVED).toBe('order.return_approved');
+    expect(EVENT_TYPES.ORDER_RETURN_REJECTED).toBe('order.return_rejected');
+    expect(EVENT_TYPES.ORDER_RETURN_REFUNDED).toBe('order.return_refunded');
+    expect(EVENT_TYPES.PAYMENT_REFUNDED).toBe('payment.refunded');
   });
 });
 
@@ -835,6 +847,516 @@ describe('validateEvent with payment events', () => {
     const result = validateEvent(event);
     expect(result.success).toBe(false);
     expect(result.data).toBeUndefined();
+    expect(result.error).toBeInstanceOf(Error);
+  });
+});
+
+describe('OrderDeliveredSchema', () => {
+  const validEvent = {
+    type: EVENT_TYPES.ORDER_DELIVERED,
+    orderId: 1,
+    userId: 100,
+    correlationId: randomUUID(),
+    timestamp: new Date().toISOString(),
+    data: {
+      items: [{ productId: 1, quantity: 2, price: 19.99 }],
+      totalAmount: 39.98,
+    },
+  };
+
+  test('validates correct order.delivered event', () => {
+    expect(() => OrderDeliveredSchema.parse(validEvent)).not.toThrow();
+  });
+
+  test('rejects order.delivered event with empty items array', () => {
+    const invalidEvent = { ...validEvent, data: { ...validEvent.data, items: [] } };
+    expect(() => OrderDeliveredSchema.parse(invalidEvent)).toThrow();
+  });
+
+  test('rejects order.delivered event with negative totalAmount', () => {
+    const invalidEvent = { ...validEvent, data: { ...validEvent.data, totalAmount: -10 } };
+    expect(() => OrderDeliveredSchema.parse(invalidEvent)).toThrow();
+  });
+
+  test('rejects order.delivered event with missing data fields', () => {
+    const invalidEvent = { ...validEvent, data: {} };
+    expect(() => OrderDeliveredSchema.parse(invalidEvent)).toThrow();
+  });
+
+  test('rejects order.delivered event with wrong event type', () => {
+    const invalidEvent = { ...validEvent, type: EVENT_TYPES.ORDER_SHIPPED };
+    expect(() => OrderDeliveredSchema.parse(invalidEvent)).toThrow();
+  });
+});
+
+describe('OrderReturnRequestedSchema', () => {
+  const validEvent = {
+    type: EVENT_TYPES.ORDER_RETURN_REQUESTED,
+    orderId: 1,
+    userId: 100,
+    correlationId: randomUUID(),
+    timestamp: new Date().toISOString(),
+    data: {
+      category: 'defective',
+      reason: 'Product arrived broken',
+      items: [{ productId: 1, quantity: 1, price: 29.99 }],
+      totalAmount: 29.99,
+    },
+  };
+
+  test('validates correct order.return_requested event', () => {
+    expect(() => OrderReturnRequestedSchema.parse(validEvent)).not.toThrow();
+  });
+
+  test('validates order.return_requested event without optional reason', () => {
+    const eventWithoutReason = { ...validEvent, data: { ...validEvent.data, reason: undefined } };
+    expect(() => OrderReturnRequestedSchema.parse(eventWithoutReason)).not.toThrow();
+  });
+
+  test('rejects order.return_requested event with empty reason string', () => {
+    const invalidEvent = { ...validEvent, data: { ...validEvent.data, reason: '' } };
+    expect(() => OrderReturnRequestedSchema.parse(invalidEvent)).toThrow();
+  });
+
+  test('rejects order.return_requested event with empty category', () => {
+    const invalidEvent = { ...validEvent, data: { ...validEvent.data, category: '' } };
+    expect(() => OrderReturnRequestedSchema.parse(invalidEvent)).toThrow();
+  });
+
+  test('rejects order.return_requested event with empty items array', () => {
+    const invalidEvent = { ...validEvent, data: { ...validEvent.data, items: [] } };
+    expect(() => OrderReturnRequestedSchema.parse(invalidEvent)).toThrow();
+  });
+
+  test('rejects order.return_requested event with missing category', () => {
+    const { category, ...dataWithoutCategory } = validEvent.data;
+    const invalidEvent = { ...validEvent, data: dataWithoutCategory };
+    expect(() => OrderReturnRequestedSchema.parse(invalidEvent)).toThrow();
+  });
+
+  test('rejects order.return_requested event with wrong event type', () => {
+    const invalidEvent = { ...validEvent, type: EVENT_TYPES.ORDER_CANCELLED };
+    expect(() => OrderReturnRequestedSchema.parse(invalidEvent)).toThrow();
+  });
+});
+
+describe('OrderReturnApprovedSchema', () => {
+  const validEvent = {
+    type: EVENT_TYPES.ORDER_RETURN_APPROVED,
+    orderId: 1,
+    userId: 100,
+    correlationId: randomUUID(),
+    timestamp: new Date().toISOString(),
+    data: {
+      items: [{ productId: 1, quantity: 1, price: 29.99 }],
+      totalAmount: 29.99,
+    },
+  };
+
+  test('validates correct order.return_approved event', () => {
+    expect(() => OrderReturnApprovedSchema.parse(validEvent)).not.toThrow();
+  });
+
+  test('rejects order.return_approved event with empty items array', () => {
+    const invalidEvent = { ...validEvent, data: { ...validEvent.data, items: [] } };
+    expect(() => OrderReturnApprovedSchema.parse(invalidEvent)).toThrow();
+  });
+
+  test('rejects order.return_approved event with zero totalAmount', () => {
+    const invalidEvent = { ...validEvent, data: { ...validEvent.data, totalAmount: 0 } };
+    expect(() => OrderReturnApprovedSchema.parse(invalidEvent)).toThrow();
+  });
+
+  test('rejects order.return_approved event with invalid item (negative quantity)', () => {
+    const invalidEvent = {
+      ...validEvent,
+      data: {
+        ...validEvent.data,
+        items: [{ productId: 1, quantity: -1, price: 29.99 }],
+      },
+    };
+    expect(() => OrderReturnApprovedSchema.parse(invalidEvent)).toThrow();
+  });
+
+  test('rejects order.return_approved event with wrong event type', () => {
+    const invalidEvent = { ...validEvent, type: EVENT_TYPES.ORDER_RETURN_REQUESTED };
+    expect(() => OrderReturnApprovedSchema.parse(invalidEvent)).toThrow();
+  });
+});
+
+describe('OrderReturnRejectedSchema', () => {
+  const validEvent = {
+    type: EVENT_TYPES.ORDER_RETURN_REJECTED,
+    orderId: 1,
+    userId: 100,
+    correlationId: randomUUID(),
+    timestamp: new Date().toISOString(),
+    data: {
+      adminReason: 'Return window has expired',
+    },
+  };
+
+  test('validates correct order.return_rejected event', () => {
+    expect(() => OrderReturnRejectedSchema.parse(validEvent)).not.toThrow();
+  });
+
+  test('rejects order.return_rejected event with empty adminReason', () => {
+    const invalidEvent = { ...validEvent, data: { adminReason: '' } };
+    expect(() => OrderReturnRejectedSchema.parse(invalidEvent)).toThrow();
+  });
+
+  test('rejects order.return_rejected event with missing adminReason', () => {
+    const invalidEvent = { ...validEvent, data: {} };
+    expect(() => OrderReturnRejectedSchema.parse(invalidEvent)).toThrow();
+  });
+
+  test('rejects order.return_rejected event with wrong event type', () => {
+    const invalidEvent = { ...validEvent, type: EVENT_TYPES.ORDER_RETURN_APPROVED };
+    expect(() => OrderReturnRejectedSchema.parse(invalidEvent)).toThrow();
+  });
+
+  test('rejects order.return_rejected event with invalid correlationId', () => {
+    const invalidEvent = { ...validEvent, correlationId: 'not-a-uuid' };
+    expect(() => OrderReturnRejectedSchema.parse(invalidEvent)).toThrow();
+  });
+});
+
+describe('OrderReturnRefundedSchema', () => {
+  const validEvent = {
+    type: EVENT_TYPES.ORDER_RETURN_REFUNDED,
+    orderId: 1,
+    userId: 100,
+    correlationId: randomUUID(),
+    timestamp: new Date().toISOString(),
+    data: {
+      refundAmount: 29.99,
+    },
+  };
+
+  test('validates correct order.return_refunded event', () => {
+    expect(() => OrderReturnRefundedSchema.parse(validEvent)).not.toThrow();
+  });
+
+  test('rejects order.return_refunded event with zero refundAmount', () => {
+    const invalidEvent = { ...validEvent, data: { refundAmount: 0 } };
+    expect(() => OrderReturnRefundedSchema.parse(invalidEvent)).toThrow();
+  });
+
+  test('rejects order.return_refunded event with negative refundAmount', () => {
+    const invalidEvent = { ...validEvent, data: { refundAmount: -10 } };
+    expect(() => OrderReturnRefundedSchema.parse(invalidEvent)).toThrow();
+  });
+
+  test('rejects order.return_refunded event with missing refundAmount', () => {
+    const invalidEvent = { ...validEvent, data: {} };
+    expect(() => OrderReturnRefundedSchema.parse(invalidEvent)).toThrow();
+  });
+
+  test('rejects order.return_refunded event with wrong event type', () => {
+    const invalidEvent = { ...validEvent, type: EVENT_TYPES.ORDER_CANCELLED };
+    expect(() => OrderReturnRefundedSchema.parse(invalidEvent)).toThrow();
+  });
+});
+
+describe('PaymentRefundedSchema', () => {
+  const validEvent = {
+    type: EVENT_TYPES.PAYMENT_REFUNDED,
+    orderId: 1,
+    userId: 100,
+    correlationId: randomUUID(),
+    timestamp: new Date().toISOString(),
+    data: {
+      amount: 49.99,
+      currency: 'USD',
+    },
+  };
+
+  test('validates correct payment.refunded event', () => {
+    expect(() => PaymentRefundedSchema.parse(validEvent)).not.toThrow();
+  });
+
+  test('rejects payment.refunded event with negative amount', () => {
+    const invalidEvent = { ...validEvent, data: { ...validEvent.data, amount: -10 } };
+    expect(() => PaymentRefundedSchema.parse(invalidEvent)).toThrow();
+  });
+
+  test('rejects payment.refunded event with zero amount', () => {
+    const invalidEvent = { ...validEvent, data: { ...validEvent.data, amount: 0 } };
+    expect(() => PaymentRefundedSchema.parse(invalidEvent)).toThrow();
+  });
+
+  test('rejects payment.refunded event with empty currency', () => {
+    const invalidEvent = { ...validEvent, data: { ...validEvent.data, currency: '' } };
+    expect(() => PaymentRefundedSchema.parse(invalidEvent)).toThrow();
+  });
+
+  test('rejects payment.refunded event with missing amount', () => {
+    const invalidEvent = { ...validEvent, data: { currency: 'USD' } };
+    expect(() => PaymentRefundedSchema.parse(invalidEvent)).toThrow();
+  });
+
+  test('rejects payment.refunded event with wrong event type', () => {
+    const invalidEvent = { ...validEvent, type: EVENT_TYPES.PAYMENT_AUTHORIZED };
+    expect(() => PaymentRefundedSchema.parse(invalidEvent)).toThrow();
+  });
+});
+
+describe('createOrderEvent with new event types', () => {
+  test('creates valid order.delivered event', () => {
+    const event = createOrderEvent(EVENT_TYPES.ORDER_DELIVERED, {
+      orderId: 1,
+      userId: 100,
+      data: {
+        items: [{ productId: 1, quantity: 2, price: 19.99 }],
+        totalAmount: 39.98,
+      },
+    });
+
+    expect(event.type).toBe(EVENT_TYPES.ORDER_DELIVERED);
+    expect(event.correlationId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
+    expect(event.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+    if (event.type === EVENT_TYPES.ORDER_DELIVERED) {
+      expect(event.data.items).toHaveLength(1);
+      expect(event.data.totalAmount).toBe(39.98);
+    }
+  });
+
+  test('creates valid order.return_requested event', () => {
+    const event = createOrderEvent(EVENT_TYPES.ORDER_RETURN_REQUESTED, {
+      orderId: 2,
+      userId: 200,
+      data: {
+        category: 'defective',
+        reason: 'Broken on arrival',
+        items: [{ productId: 5, quantity: 1, price: 49.99 }],
+        totalAmount: 49.99,
+      },
+    });
+
+    expect(event.type).toBe(EVENT_TYPES.ORDER_RETURN_REQUESTED);
+    if (event.type === EVENT_TYPES.ORDER_RETURN_REQUESTED) {
+      expect(event.data.category).toBe('defective');
+      expect(event.data.reason).toBe('Broken on arrival');
+    }
+  });
+
+  test('creates valid order.return_approved event', () => {
+    const event = createOrderEvent(EVENT_TYPES.ORDER_RETURN_APPROVED, {
+      orderId: 3,
+      userId: 300,
+      data: {
+        items: [{ productId: 10, quantity: 1, price: 99.99 }],
+        totalAmount: 99.99,
+      },
+    });
+
+    expect(event.type).toBe(EVENT_TYPES.ORDER_RETURN_APPROVED);
+    if (event.type === EVENT_TYPES.ORDER_RETURN_APPROVED) {
+      expect(event.data.items).toHaveLength(1);
+    }
+  });
+
+  test('creates valid order.return_rejected event', () => {
+    const event = createOrderEvent(EVENT_TYPES.ORDER_RETURN_REJECTED, {
+      orderId: 4,
+      userId: 400,
+      data: {
+        adminReason: 'Return window expired',
+      },
+    });
+
+    expect(event.type).toBe(EVENT_TYPES.ORDER_RETURN_REJECTED);
+    if (event.type === EVENT_TYPES.ORDER_RETURN_REJECTED) {
+      expect(event.data.adminReason).toBe('Return window expired');
+    }
+  });
+
+  test('creates valid order.return_refunded event', () => {
+    const event = createOrderEvent(EVENT_TYPES.ORDER_RETURN_REFUNDED, {
+      orderId: 5,
+      userId: 500,
+      data: {
+        refundAmount: 29.99,
+      },
+    });
+
+    expect(event.type).toBe(EVENT_TYPES.ORDER_RETURN_REFUNDED);
+    if (event.type === EVENT_TYPES.ORDER_RETURN_REFUNDED) {
+      expect(event.data.refundAmount).toBe(29.99);
+    }
+  });
+});
+
+describe('createPaymentEvent with payment.refunded', () => {
+  test('creates valid payment.refunded event', () => {
+    const event = createPaymentEvent(EVENT_TYPES.PAYMENT_REFUNDED, {
+      orderId: 1,
+      userId: 100,
+      data: {
+        amount: 49.99,
+        currency: 'USD',
+      },
+    });
+
+    expect(event.type).toBe(EVENT_TYPES.PAYMENT_REFUNDED);
+    expect(event.correlationId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
+    expect(event.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+    if (event.type === EVENT_TYPES.PAYMENT_REFUNDED) {
+      expect(event.data.amount).toBe(49.99);
+      expect(event.data.currency).toBe('USD');
+    }
+  });
+
+  test('throws ZodError for invalid payment.refunded data (negative amount)', () => {
+    expect(() => {
+      createPaymentEvent(EVENT_TYPES.PAYMENT_REFUNDED, {
+        orderId: 1,
+        userId: 100,
+        data: {
+          amount: -10,
+          currency: 'USD',
+        },
+      });
+    }).toThrow();
+  });
+});
+
+describe('validateEvent with new event types', () => {
+  test('returns success for valid order.delivered event', () => {
+    const event = {
+      type: EVENT_TYPES.ORDER_DELIVERED,
+      orderId: 1,
+      userId: 100,
+      correlationId: randomUUID(),
+      timestamp: new Date().toISOString(),
+      data: {
+        items: [{ productId: 1, quantity: 1, price: 10 }],
+        totalAmount: 10,
+      },
+    };
+
+    const result = validateEvent(event);
+    expect(result.success).toBe(true);
+    expect(result.data).toEqual(event);
+  });
+
+  test('returns success for valid order.return_requested event', () => {
+    const event = {
+      type: EVENT_TYPES.ORDER_RETURN_REQUESTED,
+      orderId: 2,
+      userId: 200,
+      correlationId: randomUUID(),
+      timestamp: new Date().toISOString(),
+      data: {
+        category: 'wrong_item',
+        items: [{ productId: 3, quantity: 1, price: 25 }],
+        totalAmount: 25,
+      },
+    };
+
+    const result = validateEvent(event);
+    expect(result.success).toBe(true);
+  });
+
+  test('returns success for valid order.return_approved event', () => {
+    const event = {
+      type: EVENT_TYPES.ORDER_RETURN_APPROVED,
+      orderId: 3,
+      userId: 300,
+      correlationId: randomUUID(),
+      timestamp: new Date().toISOString(),
+      data: {
+        items: [{ productId: 5, quantity: 2, price: 15 }],
+        totalAmount: 30,
+      },
+    };
+
+    const result = validateEvent(event);
+    expect(result.success).toBe(true);
+  });
+
+  test('returns success for valid order.return_rejected event', () => {
+    const event = {
+      type: EVENT_TYPES.ORDER_RETURN_REJECTED,
+      orderId: 4,
+      userId: 400,
+      correlationId: randomUUID(),
+      timestamp: new Date().toISOString(),
+      data: {
+        adminReason: 'Item not eligible for return',
+      },
+    };
+
+    const result = validateEvent(event);
+    expect(result.success).toBe(true);
+  });
+
+  test('returns success for valid order.return_refunded event', () => {
+    const event = {
+      type: EVENT_TYPES.ORDER_RETURN_REFUNDED,
+      orderId: 5,
+      userId: 500,
+      correlationId: randomUUID(),
+      timestamp: new Date().toISOString(),
+      data: {
+        refundAmount: 50,
+      },
+    };
+
+    const result = validateEvent(event);
+    expect(result.success).toBe(true);
+  });
+
+  test('returns success for valid payment.refunded event', () => {
+    const event = {
+      type: EVENT_TYPES.PAYMENT_REFUNDED,
+      orderId: 6,
+      userId: 600,
+      correlationId: randomUUID(),
+      timestamp: new Date().toISOString(),
+      data: {
+        amount: 75.50,
+        currency: 'EUR',
+      },
+    };
+
+    const result = validateEvent(event);
+    expect(result.success).toBe(true);
+    expect(result.data).toEqual(event);
+  });
+
+  test('returns failure for invalid order.delivered event (empty items)', () => {
+    const event = {
+      type: EVENT_TYPES.ORDER_DELIVERED,
+      orderId: 1,
+      userId: 100,
+      correlationId: randomUUID(),
+      timestamp: new Date().toISOString(),
+      data: {
+        items: [],
+        totalAmount: 10,
+      },
+    };
+
+    const result = validateEvent(event);
+    expect(result.success).toBe(false);
+    expect(result.error).toBeInstanceOf(Error);
+  });
+
+  test('returns failure for invalid payment.refunded event (missing currency)', () => {
+    const event = {
+      type: EVENT_TYPES.PAYMENT_REFUNDED,
+      orderId: 1,
+      userId: 100,
+      correlationId: randomUUID(),
+      timestamp: new Date().toISOString(),
+      data: {
+        amount: 50,
+      },
+    };
+
+    const result = validateEvent(event);
+    expect(result.success).toBe(false);
     expect(result.error).toBeInstanceOf(Error);
   });
 });
