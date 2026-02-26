@@ -9,6 +9,7 @@ import {
   createProductCreatedEvent,
   createProductUpdatedEvent,
   createProductDeletedEvent,
+  validateEvent,
 } from '../src';
 
 const validProductPayload = {
@@ -283,5 +284,128 @@ describe('createProductDeletedEvent', () => {
     expect(() => {
       createProductDeletedEvent({ id: randomUUID(), deletedAt: 'not-a-date' });
     }).toThrow();
+  });
+});
+
+describe('validateEvent with product events', () => {
+  test('returns success for valid product.created event', () => {
+    const event = {
+      eventId: randomUUID(),
+      type: EVENT_TYPES.PRODUCT_CREATED,
+      timestamp: new Date().toISOString(),
+      payload: validProductPayload,
+    };
+
+    const result = validateEvent(event);
+    expect(result.success).toBe(true);
+    expect(result.data).toEqual(event);
+    expect(result.error).toBeUndefined();
+  });
+
+  test('returns success for valid product.updated event', () => {
+    const event = {
+      eventId: randomUUID(),
+      type: EVENT_TYPES.PRODUCT_UPDATED,
+      timestamp: new Date().toISOString(),
+      payload: validProductPayload,
+    };
+
+    const result = validateEvent(event);
+    expect(result.success).toBe(true);
+    expect(result.data).toEqual(event);
+  });
+
+  test('returns failure for product.updated event with invalid eventId', () => {
+    const event = {
+      eventId: 'not-a-uuid',
+      type: EVENT_TYPES.PRODUCT_UPDATED,
+      timestamp: new Date().toISOString(),
+      payload: validProductPayload,
+    };
+
+    const result = validateEvent(event);
+    expect(result.success).toBe(false);
+    expect(result.error).toBeInstanceOf(Error);
+  });
+
+  test('returns failure for product.updated event with missing payload', () => {
+    const event = {
+      eventId: randomUUID(),
+      type: EVENT_TYPES.PRODUCT_UPDATED,
+      timestamp: new Date().toISOString(),
+    };
+
+    const result = validateEvent(event);
+    expect(result.success).toBe(false);
+    expect(result.error).toBeInstanceOf(Error);
+  });
+
+  test('returns success for valid product.deleted event', () => {
+    const event = {
+      eventId: randomUUID(),
+      type: EVENT_TYPES.PRODUCT_DELETED,
+      timestamp: new Date().toISOString(),
+      payload: {
+        id: randomUUID(),
+        deletedAt: new Date().toISOString(),
+      },
+    };
+
+    const result = validateEvent(event);
+    expect(result.success).toBe(true);
+    expect(result.data).toEqual(event);
+  });
+
+  test('returns success for product.created event without optional imageUrl', () => {
+    const event = {
+      eventId: randomUUID(),
+      type: EVENT_TYPES.PRODUCT_CREATED,
+      timestamp: new Date().toISOString(),
+      payload: validProductPayloadWithoutOptionals,
+    };
+
+    const result = validateEvent(event);
+    expect(result.success).toBe(true);
+  });
+
+  test('returns failure for product.created event with invalid eventId', () => {
+    const event = {
+      eventId: 'not-a-uuid',
+      type: EVENT_TYPES.PRODUCT_CREATED,
+      timestamp: new Date().toISOString(),
+      payload: validProductPayload,
+    };
+
+    const result = validateEvent(event);
+    expect(result.success).toBe(false);
+    expect(result.error).toBeInstanceOf(Error);
+  });
+
+  test('returns failure for product.created event with missing payload', () => {
+    const event = {
+      eventId: randomUUID(),
+      type: EVENT_TYPES.PRODUCT_CREATED,
+      timestamp: new Date().toISOString(),
+    };
+
+    const result = validateEvent(event);
+    expect(result.success).toBe(false);
+    expect(result.error).toBeInstanceOf(Error);
+  });
+
+  test('returns failure for product.deleted event with invalid payload.id', () => {
+    const event = {
+      eventId: randomUUID(),
+      type: EVENT_TYPES.PRODUCT_DELETED,
+      timestamp: new Date().toISOString(),
+      payload: {
+        id: 'not-a-uuid',
+        deletedAt: new Date().toISOString(),
+      },
+    };
+
+    const result = validateEvent(event);
+    expect(result.success).toBe(false);
+    expect(result.error).toBeInstanceOf(Error);
   });
 });

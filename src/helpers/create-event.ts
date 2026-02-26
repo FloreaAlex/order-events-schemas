@@ -12,10 +12,14 @@ import { OrderReturnRefundedSchema, OrderReturnRefundedEvent } from '../events/o
 import { PaymentAuthorizedSchema, PaymentAuthorizedEvent } from '../events/payment-authorized';
 import { PaymentFailedSchema, PaymentFailedEvent } from '../events/payment-failed';
 import { PaymentRefundedSchema, PaymentRefundedEvent } from '../events/payment-refunded';
+import { ProductCreatedSchema, ProductCreatedEvent, ProductUpdatedSchema, ProductUpdatedEvent, ProductDeletedSchema, ProductDeletedEvent } from '../events/product-events';
+import { SearchExecutedSchema, SearchExecutedEvent } from '../events/search-events';
 
 export type OrderEvent = OrderCreatedEvent | OrderConfirmedEvent | OrderShippedEvent | OrderCancelledEvent | OrderDeliveredEvent | OrderReturnRequestedEvent | OrderReturnApprovedEvent | OrderReturnRejectedEvent | OrderReturnRefundedEvent;
 export type PaymentEvent = PaymentAuthorizedEvent | PaymentFailedEvent | PaymentRefundedEvent;
-export type AllEvents = OrderEvent | PaymentEvent;
+export type ProductEvent = ProductCreatedEvent | ProductUpdatedEvent | ProductDeletedEvent;
+export type SearchEvent = SearchExecutedEvent;
+export type AllEvents = OrderEvent | PaymentEvent | ProductEvent | SearchEvent;
 
 interface BaseEventParams {
   orderId: number;
@@ -263,6 +267,22 @@ export function validateEvent(event: unknown): ValidationResult {
 
       case EVENT_TYPES.PAYMENT_REFUNDED:
         validatedEvent = PaymentRefundedSchema.parse(event);
+        break;
+
+      case EVENT_TYPES.PRODUCT_CREATED:
+        validatedEvent = ProductCreatedSchema.parse(event);
+        break;
+
+      case EVENT_TYPES.PRODUCT_UPDATED:
+        validatedEvent = ProductUpdatedSchema.parse(event);
+        break;
+
+      case EVENT_TYPES.PRODUCT_DELETED:
+        validatedEvent = ProductDeletedSchema.parse(event);
+        break;
+
+      case EVENT_TYPES.SEARCH_EXECUTED:
+        validatedEvent = SearchExecutedSchema.parse(event);
         break;
 
       default:

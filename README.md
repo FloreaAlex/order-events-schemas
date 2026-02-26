@@ -47,6 +47,7 @@ const paymentEvent = createPaymentEvent(EVENT_TYPES.PAYMENT_AUTHORIZED, {
 ```typescript
 import { validateEvent, EVENT_TYPES } from '@florea-alex/order-events-schemas';
 
+// validateEvent handles all event families: order, payment, product, search
 const result = validateEvent(incomingEvent);
 
 if (result.success) {
@@ -58,6 +59,12 @@ if (result.success) {
       break;
     case EVENT_TYPES.PAYMENT_AUTHORIZED:
       console.log('Payment authorized:', event.data.transactionId);
+      break;
+    case EVENT_TYPES.PRODUCT_CREATED:
+      console.log('Product created:', event.payload.name);
+      break;
+    case EVENT_TYPES.SEARCH_EXECUTED:
+      console.log('Search query:', event.payload.query);
       break;
   }
 } else {
@@ -145,7 +152,7 @@ const event = createPaymentEvent(EVENT_TYPES.PAYMENT_AUTHORIZED, {
 
 ### `validateEvent(event)`
 
-Validates an event object against its schema without throwing.
+Universal validation function that handles all event families (order, payment, product, search). Discriminates on the `type` field to route to the correct schema. Returns a result without throwing.
 
 **Returns**: `ValidationResult`
 - Success: `{ success: true, data: ValidatedEvent }`
@@ -156,7 +163,19 @@ Validates an event object against its schema without throwing.
 const result = validateEvent(unknownEvent);
 
 if (result.success) {
-  console.log('Valid event:', result.data);
+  const event = result.data; // Typed as AllEvents (order | payment | product | search)
+
+  switch (event.type) {
+    case EVENT_TYPES.ORDER_CREATED:
+      console.log('Order items:', event.data.items);
+      break;
+    case EVENT_TYPES.PRODUCT_CREATED:
+      console.log('Product created:', event.payload.name);
+      break;
+    case EVENT_TYPES.SEARCH_EXECUTED:
+      console.log('Search query:', event.payload.query);
+      break;
+  }
 } else {
   console.error('Invalid event:', result.error.message);
 }
@@ -207,8 +226,12 @@ This library is written in TypeScript and provides full type definitions. All ex
 import type {
   OrderCreatedEvent,
   PaymentAuthorizedEvent,
+  ProductCreatedEvent,
+  SearchExecutedEvent,
   OrderEvent,
   PaymentEvent,
+  ProductEvent,
+  SearchEvent,
   AllEvents
 } from '@florea-alex/order-events-schemas';
 ```
@@ -238,10 +261,11 @@ ISC
 
 ## Version
 
-Current version: **0.2.0**
+Current version: **0.3.0**
 
 ### Changelog
 
+- **0.3.0**: Unified validateEvent to handle all event families (order, payment, product, search). Added ProductEvent and SearchEvent union types. Widened AllEvents to include all event families.
 - **0.2.0**: Added return & refund event schemas (order.delivered, order.return_requested, order.return_approved, order.return_rejected, order.return_refunded, payment.refunded)
 - **0.1.0**: Added payment event schemas, new topics, new consumer groups
 - **0.0.1**: Initial release with order event schemas

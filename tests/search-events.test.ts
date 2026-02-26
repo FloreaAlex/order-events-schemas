@@ -3,6 +3,7 @@ import {
   EVENT_TYPES,
   SearchExecutedSchema,
   createSearchExecutedEvent,
+  validateEvent,
 } from '../src';
 
 const validSearchPayload = {
@@ -165,5 +166,85 @@ describe('createSearchExecutedEvent', () => {
         responseTimeMs: undefined as unknown as number,
       });
     }).toThrow();
+  });
+});
+
+describe('validateEvent with search events', () => {
+  test('returns success for valid search.executed event', () => {
+    const event = {
+      eventId: randomUUID(),
+      type: EVENT_TYPES.SEARCH_EXECUTED,
+      timestamp: new Date().toISOString(),
+      payload: validSearchPayload,
+    };
+
+    const result = validateEvent(event);
+    expect(result.success).toBe(true);
+    expect(result.data).toEqual(event);
+    expect(result.error).toBeUndefined();
+  });
+
+  test('returns success for search.executed event without optional userId', () => {
+    const event = {
+      eventId: randomUUID(),
+      type: EVENT_TYPES.SEARCH_EXECUTED,
+      timestamp: new Date().toISOString(),
+      payload: minimalSearchPayload,
+    };
+
+    const result = validateEvent(event);
+    expect(result.success).toBe(true);
+    expect(result.data).toEqual(event);
+  });
+
+  test('returns success for search.executed event with empty facetsApplied', () => {
+    const event = {
+      eventId: randomUUID(),
+      type: EVENT_TYPES.SEARCH_EXECUTED,
+      timestamp: new Date().toISOString(),
+      payload: { ...validSearchPayload, facetsApplied: {} },
+    };
+
+    const result = validateEvent(event);
+    expect(result.success).toBe(true);
+  });
+
+  test('returns failure for search.executed event with invalid eventId', () => {
+    const event = {
+      eventId: 'not-a-uuid',
+      type: EVENT_TYPES.SEARCH_EXECUTED,
+      timestamp: new Date().toISOString(),
+      payload: validSearchPayload,
+    };
+
+    const result = validateEvent(event);
+    expect(result.success).toBe(false);
+    expect(result.error).toBeInstanceOf(Error);
+  });
+
+  test('returns failure for search.executed event with missing payload', () => {
+    const event = {
+      eventId: randomUUID(),
+      type: EVENT_TYPES.SEARCH_EXECUTED,
+      timestamp: new Date().toISOString(),
+    };
+
+    const result = validateEvent(event);
+    expect(result.success).toBe(false);
+    expect(result.error).toBeInstanceOf(Error);
+  });
+
+  test('returns failure for search.executed event with missing query', () => {
+    const { query: _omit, ...payloadWithoutQuery } = validSearchPayload;
+    const event = {
+      eventId: randomUUID(),
+      type: EVENT_TYPES.SEARCH_EXECUTED,
+      timestamp: new Date().toISOString(),
+      payload: payloadWithoutQuery,
+    };
+
+    const result = validateEvent(event);
+    expect(result.success).toBe(false);
+    expect(result.error).toBeInstanceOf(Error);
   });
 });
