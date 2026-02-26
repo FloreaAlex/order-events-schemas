@@ -124,7 +124,7 @@ Defines contracts for Kafka-based order lifecycle events. Topics and consumer gr
 
 **createPaymentEvent(type, params)**: Factory function for creating payment events with validation. Auto-generates correlationId and timestamp if not provided. Throws ZodError on validation failure.
 
-**validateEvent(event)**: Safe validation function that returns `{ success: boolean, data?, error? }` without throwing. Validates any event against its appropriate schema based on the event type.
+**validateEvent(event)**: Universal safe validation function that returns `{ success: boolean, data?, error? }` without throwing. Handles all event families (order, payment, product, search) by discriminating on the `type` field and routing to the correct schema. Validates any event against its appropriate schema based on the event type.
 
 ### Exported Types
 
@@ -132,7 +132,7 @@ Defines contracts for Kafka-based order lifecycle events. Topics and consumer gr
 
 **Event Types**: `OrderCreatedEvent`, `OrderConfirmedEvent`, `OrderShippedEvent`, `OrderCancelledEvent`, `OrderDeliveredEvent`, `OrderReturnRequestedEvent`, `OrderReturnApprovedEvent`, `OrderReturnRejectedEvent`, `OrderReturnRefundedEvent`, `PaymentAuthorizedEvent`, `PaymentFailedEvent`, `PaymentRefundedEvent`
 
-**Union Types**: `OrderEvent`, `PaymentEvent`, `AllEvents`
+**Union Types**: `OrderEvent`, `PaymentEvent`, `ProductEvent`, `SearchEvent`, `AllEvents`
 
 **Utility Types**: `ValidationResult`
 

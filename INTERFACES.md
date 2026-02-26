@@ -48,7 +48,7 @@
 | SearchExecutedSchema | schema | Zod schema for search.executed event (eventId, type, timestamp, payload: { query, resultCount, facetsApplied, userId?, responseTimeMs }) |
 | createOrderEvent | function | Factory function to create and validate order events with auto-generated correlationId and timestamp |
 | createPaymentEvent | function | Factory function to create and validate payment events with auto-generated correlationId and timestamp |
-| validateEvent | function | Safe validation function that returns { success, data?, error? } without throwing |
+| validateEvent | function | Universal safe validation function that handles all event types (order, payment, product, search) — returns { success, data?, error? } without throwing |
 | createProductCreatedEvent | function | Factory function for product.created — takes payload, auto-generates eventId (UUID v4) and timestamp |
 | createProductUpdatedEvent | function | Factory function for product.updated — takes payload, auto-generates eventId (UUID v4) and timestamp |
 | createProductDeletedEvent | function | Factory function for product.deleted — takes { id, deletedAt } payload, auto-generates eventId and timestamp |
@@ -74,7 +74,9 @@
 | SearchExecutedEvent | type | Complete search.executed event type |
 | OrderEvent | type | Union type of all order events |
 | PaymentEvent | type | Union type of all payment events |
-| AllEvents | type | Union type of all events (order + payment) |
+| ProductEvent | type | Union type of all product events (product.created, product.updated, product.deleted) |
+| SearchEvent | type | Union type of all search events (search.executed) |
+| AllEvents | type | Union type of all events (order + payment + product + search) |
 | ValidationResult | type | Result type for validateEvent function ({ success: true, data } or { success: false, error }) |
 | Topic | type | Union type of all topic names |
 | ConsumerGroup | type | Union type of all consumer group names |

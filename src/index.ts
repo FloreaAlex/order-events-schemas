@@ -59,7 +59,7 @@ export type { PaymentRefundedEvent } from './events/payment-refunded';
 
 // Helper functions
 export { createOrderEvent, createPaymentEvent, validateEvent } from './helpers/create-event';
-export type { OrderEvent, PaymentEvent, AllEvents, ValidationResult } from './helpers/create-event';
+export type { OrderEvent, PaymentEvent, ProductEvent, SearchEvent, AllEvents, ValidationResult } from './helpers/create-event';
 
 // Product events (product.events topic)
 export {
