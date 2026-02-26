@@ -4,11 +4,17 @@ import { OrderCreatedSchema, OrderCreatedEvent } from '../events/order-created';
 import { OrderConfirmedSchema, OrderConfirmedEvent } from '../events/order-confirmed';
 import { OrderShippedSchema, OrderShippedEvent } from '../events/order-shipped';
 import { OrderCancelledSchema, OrderCancelledEvent } from '../events/order-cancelled';
+import { OrderDeliveredSchema, OrderDeliveredEvent } from '../events/order-delivered';
+import { OrderReturnRequestedSchema, OrderReturnRequestedEvent } from '../events/order-return-requested';
+import { OrderReturnApprovedSchema, OrderReturnApprovedEvent } from '../events/order-return-approved';
+import { OrderReturnRejectedSchema, OrderReturnRejectedEvent } from '../events/order-return-rejected';
+import { OrderReturnRefundedSchema, OrderReturnRefundedEvent } from '../events/order-return-refunded';
 import { PaymentAuthorizedSchema, PaymentAuthorizedEvent } from '../events/payment-authorized';
 import { PaymentFailedSchema, PaymentFailedEvent } from '../events/payment-failed';
+import { PaymentRefundedSchema, PaymentRefundedEvent } from '../events/payment-refunded';
 
-export type OrderEvent = OrderCreatedEvent | OrderConfirmedEvent | OrderShippedEvent | OrderCancelledEvent;
-export type PaymentEvent = PaymentAuthorizedEvent | PaymentFailedEvent;
+export type OrderEvent = OrderCreatedEvent | OrderConfirmedEvent | OrderShippedEvent | OrderCancelledEvent | OrderDeliveredEvent | OrderReturnRequestedEvent | OrderReturnApprovedEvent | OrderReturnRejectedEvent | OrderReturnRefundedEvent;
+export type PaymentEvent = PaymentAuthorizedEvent | PaymentFailedEvent | PaymentRefundedEvent;
 export type AllEvents = OrderEvent | PaymentEvent;
 
 interface BaseEventParams {
@@ -34,12 +40,36 @@ interface CreateOrderCancelledParams extends BaseEventParams {
   data: OrderCancelledEvent['data'];
 }
 
+interface CreateOrderDeliveredParams extends BaseEventParams {
+  data: OrderDeliveredEvent['data'];
+}
+
+interface CreateOrderReturnRequestedParams extends BaseEventParams {
+  data: OrderReturnRequestedEvent['data'];
+}
+
+interface CreateOrderReturnApprovedParams extends BaseEventParams {
+  data: OrderReturnApprovedEvent['data'];
+}
+
+interface CreateOrderReturnRejectedParams extends BaseEventParams {
+  data: OrderReturnRejectedEvent['data'];
+}
+
+interface CreateOrderReturnRefundedParams extends BaseEventParams {
+  data: OrderReturnRefundedEvent['data'];
+}
+
 interface CreatePaymentAuthorizedParams extends BaseEventParams {
   data: PaymentAuthorizedEvent['data'];
 }
 
 interface CreatePaymentFailedParams extends BaseEventParams {
   data: PaymentFailedEvent['data'];
+}
+
+interface CreatePaymentRefundedParams extends BaseEventParams {
+  data: PaymentRefundedEvent['data'];
 }
 
 /**
@@ -51,9 +81,14 @@ export function createOrderEvent(type: typeof EVENT_TYPES.ORDER_CREATED, params:
 export function createOrderEvent(type: typeof EVENT_TYPES.ORDER_CONFIRMED, params: CreateOrderConfirmedParams): OrderConfirmedEvent;
 export function createOrderEvent(type: typeof EVENT_TYPES.ORDER_SHIPPED, params: CreateOrderShippedParams): OrderShippedEvent;
 export function createOrderEvent(type: typeof EVENT_TYPES.ORDER_CANCELLED, params: CreateOrderCancelledParams): OrderCancelledEvent;
+export function createOrderEvent(type: typeof EVENT_TYPES.ORDER_DELIVERED, params: CreateOrderDeliveredParams): OrderDeliveredEvent;
+export function createOrderEvent(type: typeof EVENT_TYPES.ORDER_RETURN_REQUESTED, params: CreateOrderReturnRequestedParams): OrderReturnRequestedEvent;
+export function createOrderEvent(type: typeof EVENT_TYPES.ORDER_RETURN_APPROVED, params: CreateOrderReturnApprovedParams): OrderReturnApprovedEvent;
+export function createOrderEvent(type: typeof EVENT_TYPES.ORDER_RETURN_REJECTED, params: CreateOrderReturnRejectedParams): OrderReturnRejectedEvent;
+export function createOrderEvent(type: typeof EVENT_TYPES.ORDER_RETURN_REFUNDED, params: CreateOrderReturnRefundedParams): OrderReturnRefundedEvent;
 export function createOrderEvent(
   type: EventType,
-  params: CreateOrderCreatedParams | CreateOrderConfirmedParams | CreateOrderShippedParams | CreateOrderCancelledParams
+  params: CreateOrderCreatedParams | CreateOrderConfirmedParams | CreateOrderShippedParams | CreateOrderCancelledParams | CreateOrderDeliveredParams | CreateOrderReturnRequestedParams | CreateOrderReturnApprovedParams | CreateOrderReturnRejectedParams | CreateOrderReturnRefundedParams
 ): OrderEvent {
   const { orderId, userId, data, correlationId, timestamp } = params;
 
@@ -81,6 +116,21 @@ export function createOrderEvent(
     case EVENT_TYPES.ORDER_CANCELLED:
       return OrderCancelledSchema.parse(baseEvent);
 
+    case EVENT_TYPES.ORDER_DELIVERED:
+      return OrderDeliveredSchema.parse(baseEvent);
+
+    case EVENT_TYPES.ORDER_RETURN_REQUESTED:
+      return OrderReturnRequestedSchema.parse(baseEvent);
+
+    case EVENT_TYPES.ORDER_RETURN_APPROVED:
+      return OrderReturnApprovedSchema.parse(baseEvent);
+
+    case EVENT_TYPES.ORDER_RETURN_REJECTED:
+      return OrderReturnRejectedSchema.parse(baseEvent);
+
+    case EVENT_TYPES.ORDER_RETURN_REFUNDED:
+      return OrderReturnRefundedSchema.parse(baseEvent);
+
     default:
       throw new Error(`Unknown event type: ${type}`);
   }
@@ -93,9 +143,10 @@ export function createOrderEvent(
  */
 export function createPaymentEvent(type: typeof EVENT_TYPES.PAYMENT_AUTHORIZED, params: CreatePaymentAuthorizedParams): PaymentAuthorizedEvent;
 export function createPaymentEvent(type: typeof EVENT_TYPES.PAYMENT_FAILED, params: CreatePaymentFailedParams): PaymentFailedEvent;
+export function createPaymentEvent(type: typeof EVENT_TYPES.PAYMENT_REFUNDED, params: CreatePaymentRefundedParams): PaymentRefundedEvent;
 export function createPaymentEvent(
   type: EventType,
-  params: CreatePaymentAuthorizedParams | CreatePaymentFailedParams
+  params: CreatePaymentAuthorizedParams | CreatePaymentFailedParams | CreatePaymentRefundedParams
 ): PaymentEvent {
   const { orderId, userId, data, correlationId, timestamp } = params;
 
@@ -116,6 +167,9 @@ export function createPaymentEvent(
 
     case EVENT_TYPES.PAYMENT_FAILED:
       return PaymentFailedSchema.parse(baseEvent);
+
+    case EVENT_TYPES.PAYMENT_REFUNDED:
+      return PaymentRefundedSchema.parse(baseEvent);
 
     default:
       throw new Error(`Unknown event type: ${type}`);
@@ -179,12 +233,36 @@ export function validateEvent(event: unknown): ValidationResult {
         validatedEvent = OrderCancelledSchema.parse(event);
         break;
 
+      case EVENT_TYPES.ORDER_DELIVERED:
+        validatedEvent = OrderDeliveredSchema.parse(event);
+        break;
+
+      case EVENT_TYPES.ORDER_RETURN_REQUESTED:
+        validatedEvent = OrderReturnRequestedSchema.parse(event);
+        break;
+
+      case EVENT_TYPES.ORDER_RETURN_APPROVED:
+        validatedEvent = OrderReturnApprovedSchema.parse(event);
+        break;
+
+      case EVENT_TYPES.ORDER_RETURN_REJECTED:
+        validatedEvent = OrderReturnRejectedSchema.parse(event);
+        break;
+
+      case EVENT_TYPES.ORDER_RETURN_REFUNDED:
+        validatedEvent = OrderReturnRefundedSchema.parse(event);
+        break;
+
       case EVENT_TYPES.PAYMENT_AUTHORIZED:
         validatedEvent = PaymentAuthorizedSchema.parse(event);
         break;
 
       case EVENT_TYPES.PAYMENT_FAILED:
         validatedEvent = PaymentFailedSchema.parse(event);
+        break;
+
+      case EVENT_TYPES.PAYMENT_REFUNDED:
+        validatedEvent = PaymentRefundedSchema.parse(event);
         break;
 
       default:

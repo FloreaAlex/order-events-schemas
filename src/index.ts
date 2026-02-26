@@ -25,6 +25,26 @@ export type { OrderShippedEvent } from './events/order-shipped';
 export { OrderCancelledSchema } from './events/order-cancelled';
 export type { OrderCancelledEvent } from './events/order-cancelled';
 
+// Order delivered event
+export { OrderDeliveredSchema } from './events/order-delivered';
+export type { OrderDeliveredEvent } from './events/order-delivered';
+
+// Order return requested event
+export { OrderReturnRequestedSchema } from './events/order-return-requested';
+export type { OrderReturnRequestedEvent } from './events/order-return-requested';
+
+// Order return approved event
+export { OrderReturnApprovedSchema } from './events/order-return-approved';
+export type { OrderReturnApprovedEvent } from './events/order-return-approved';
+
+// Order return rejected event
+export { OrderReturnRejectedSchema } from './events/order-return-rejected';
+export type { OrderReturnRejectedEvent } from './events/order-return-rejected';
+
+// Order return refunded event
+export { OrderReturnRefundedSchema } from './events/order-return-refunded';
+export type { OrderReturnRefundedEvent } from './events/order-return-refunded';
+
 // Payment authorized event
 export { PaymentAuthorizedSchema } from './events/payment-authorized';
 export type { PaymentAuthorizedEvent } from './events/payment-authorized';
@@ -32,6 +52,10 @@ export type { PaymentAuthorizedEvent } from './events/payment-authorized';
 // Payment failed event
 export { PaymentFailedSchema } from './events/payment-failed';
 export type { PaymentFailedEvent } from './events/payment-failed';
+
+// Payment refunded event
+export { PaymentRefundedSchema } from './events/payment-refunded';
+export type { PaymentRefundedEvent } from './events/payment-refunded';
 
 // Helper functions
 export { createOrderEvent, createPaymentEvent, validateEvent } from './helpers/create-event';
