@@ -315,6 +315,31 @@ describe('validateEvent with product events', () => {
     expect(result.data).toEqual(event);
   });
 
+  test('returns failure for product.updated event with invalid eventId', () => {
+    const event = {
+      eventId: 'not-a-uuid',
+      type: EVENT_TYPES.PRODUCT_UPDATED,
+      timestamp: new Date().toISOString(),
+      payload: validProductPayload,
+    };
+
+    const result = validateEvent(event);
+    expect(result.success).toBe(false);
+    expect(result.error).toBeInstanceOf(Error);
+  });
+
+  test('returns failure for product.updated event with missing payload', () => {
+    const event = {
+      eventId: randomUUID(),
+      type: EVENT_TYPES.PRODUCT_UPDATED,
+      timestamp: new Date().toISOString(),
+    };
+
+    const result = validateEvent(event);
+    expect(result.success).toBe(false);
+    expect(result.error).toBeInstanceOf(Error);
+  });
+
   test('returns success for valid product.deleted event', () => {
     const event = {
       eventId: randomUUID(),

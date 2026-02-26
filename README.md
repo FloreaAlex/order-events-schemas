@@ -261,10 +261,11 @@ ISC
 
 ## Version
 
-Current version: **0.2.0**
+Current version: **0.3.0**
 
 ### Changelog
 
+- **0.3.0**: Unified validateEvent to handle all event families (order, payment, product, search). Added ProductEvent and SearchEvent union types. Widened AllEvents to include all event families.
 - **0.2.0**: Added return & refund event schemas (order.delivered, order.return_requested, order.return_approved, order.return_rejected, order.return_refunded, payment.refunded)
 - **0.1.0**: Added payment event schemas, new topics, new consumer groups
 - **0.0.1**: Initial release with order event schemas

@@ -45,7 +45,7 @@ Defines contracts for Kafka-based order lifecycle events. Topics and consumer gr
   - `src/events/` - Event schemas (base, order-created, order-confirmed, order-shipped, order-cancelled, order-delivered, order-return-requested, order-return-approved, order-return-rejected, order-return-refunded, payment-authorized, payment-failed, payment-refunded, product-events, search-events)
   - `src/helpers/` - Factory and validation helper functions
   - `src/topics.ts` - Kafka topic and consumer group constants
-- `tests/` - Jest test suite with comprehensive schema validation tests (175+ tests)
+- `tests/` - Jest test suite with comprehensive schema validation tests (190 tests)
 - `dist/` - Compiled output (CommonJS module)
 
 ## Dependencies
@@ -60,9 +60,9 @@ Defines contracts for Kafka-based order lifecycle events. Topics and consumer gr
 - `ts-jest` ^29.1.0
 - `typescript` ^5.3.3
 
-**Message Queues**: 
-- Kafka topics: `order.events`, `payment.events`
-- Consumer groups: `notification-worker-group`, `product-service-group`, `payment-service-group`, `order-service-group`, `analytics-service-group`
+**Message Queues**:
+- Kafka topics: `order.events`, `payment.events`, `product.events`, `search.events`
+- Consumer groups: `notification-worker-group`, `product-service-group`, `payment-service-group`, `order-service-group`, `analytics-service-group`, `search-indexer`
 
 **Databases**: None (library does not interact with databases)
 
@@ -85,10 +85,16 @@ Defines contracts for Kafka-based order lifecycle events. Topics and consumer gr
 - `PAYMENT_AUTHORIZED: 'payment.authorized'`
 - `PAYMENT_FAILED: 'payment.failed'`
 - `PAYMENT_REFUNDED: 'payment.refunded'`
+- `PRODUCT_CREATED: 'product.created'`
+- `PRODUCT_UPDATED: 'product.updated'`
+- `PRODUCT_DELETED: 'product.deleted'`
+- `SEARCH_EXECUTED: 'search.executed'`
 
 **TOPICS**:
 - `ORDER_EVENTS: 'order.events'`
 - `PAYMENT_EVENTS: 'payment.events'`
+- `PRODUCT_EVENTS: 'product.events'`
+- `SEARCH_EVENTS: 'search.events'`
 
 **CONSUMER_GROUPS**:
 - `NOTIFICATION_WORKER: 'notification-worker-group'`
@@ -96,6 +102,7 @@ Defines contracts for Kafka-based order lifecycle events. Topics and consumer gr
 - `PAYMENT_SERVICE: 'payment-service-group'`
 - `ORDER_SERVICE: 'order-service-group'`
 - `ANALYTICS_SERVICE: 'analytics-service-group'`
+- `SEARCH_INDEXER: 'search-indexer'`
 
 ### Exported Schemas
 
