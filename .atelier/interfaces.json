@@ -1,0 +1,158 @@
+{
+  "stack": [
+    "TypeScript 5.3",
+    "Zod 3.22",
+    "Jest 29.7",
+    "ts-jest 29.1",
+    "Node.js",
+    "CommonJS"
+  ],
+  "sections": [
+    {
+      "type": "exports",
+      "entries": [
+        {
+          "name": "EVENT_TYPES",
+          "kind": "constant",
+          "description": "Object of all event type string literals. Values: ORDER_CREATED='order.created', ORDER_CONFIRMED='order.confirmed', ORDER_SHIPPED='order.shipped', ORDER_CANCELLED='order.cancelled', ORDER_DELIVERED='order.delivered', ORDER_RETURN_REQUESTED='order.return_requested', ORDER_RETURN_APPROVED='order.return_approved', ORDER_RETURN_REJECTED='order.return_rejected', ORDER_RETURN_REFUNDED='order.return_refunded', PAYMENT_AUTHORIZED='payment.authorized', PAYMENT_FAILED='payment.failed', PAYMENT_REFUNDED='payment.refunded', PRODUCT_CREATED='product.created', PRODUCT_UPDATED='product.updated', PRODUCT_DELETED='product.deleted', SEARCH_EXECUTED='search.executed'"
+        },
+        {
+          "name": "TOPICS",
+          "kind": "constant",
+          "description": "Object of Kafka topic strings. Values: ORDER_EVENTS='order.events', PAYMENT_EVENTS='payment.events', PRODUCT_EVENTS='product.events', SEARCH_EVENTS='search.events'"
+        },
+        {
+          "name": "CONSUMER_GROUPS",
+          "kind": "constant",
+          "description": "Object of Kafka consumer group strings. Values: NOTIFICATION_WORKER='notification-worker-group', PRODUCT_SERVICE='product-service-group', PAYMENT_SERVICE='payment-service-group', ORDER_SERVICE='order-service-group', ANALYTICS_SERVICE='analytics-service-group', SEARCH_INDEXER='search-indexer'"
+        },
+        {
+          "name": "BaseEventSchema",
+          "kind": "schema",
+          "description": "Zod schema for common event fields. Fields: type (literal enum of order/payment types), orderId (positive int), userId (positive int), correlationId (UUID v4 string), timestamp (ISO 8601 datetime string)"
+        },
+        {
+          "name": "OrderItemSchema",
+          "kind": "schema",
+          "description": "Reusable Zod schema for order line items. Fields: productId (positive int), quantity (positive int), price (positive number)"
+        },
+        {
+          "name": "OrderCreatedSchema",
+          "kind": "schema",
+          "description": "Zod schema extending BaseEventSchema. type='order.created'. data: { items: OrderItem[] (min 1), totalAmount: positive number, shippingAddress?: string }"
+        },
+        {
+          "name": "OrderConfirmedSchema",
+          "kind": "schema",
+          "description": "Zod schema extending BaseEventSchema. type='order.confirmed'. data: { items: OrderItem[] (min 1), totalAmount: positive number, paymentId?: string }"
+        },
+        {
+          "name": "OrderShippedSchema",
+          "kind": "schema",
+          "description": "Zod schema extending BaseEventSchema. type='order.shipped'. data: { trackingNumber?: string, carrier?: string, estimatedDelivery?: ISO 8601 datetime string }"
+        },
+        {
+          "name": "OrderCancelledSchema",
+          "kind": "schema",
+          "description": "Zod schema extending BaseEventSchema. type='order.cancelled'. data: { reason: string (min 1), cancelledBy: 'user'|'system'|'admin', refundAmount?: non-negative number, items?: OrderItem[], totalAmount?: positive number, previousStatus?: 'created'|'confirmed' }"
+        },
+        {
+          "name": "OrderDeliveredSchema",
+          "kind": "schema",
+          "description": "Zod schema extending BaseEventSchema. type='order.delivered'. data: { items: OrderItem[] (min 1), totalAmount: positive number }"
+        },
+        {
+          "name": "OrderReturnRequestedSchema",
+          "kind": "schema",
+          "description": "Zod schema extending BaseEventSchema. type='order.return_requested'. data: { category: string (min 1), reason?: string (min 1), items: OrderItem[] (min 1), totalAmount: positive number }"
+        },
+        {
+          "name": "OrderReturnApprovedSchema",
+          "kind": "schema",
+          "description": "Zod schema extending BaseEventSchema. type='order.return_approved'. data: { items: OrderItem[] (min 1), totalAmount: positive number }"
+        },
+        {
+          "name": "OrderReturnRejectedSchema",
+          "kind": "schema",
+          "description": "Zod schema extending BaseEventSchema. type='order.return_rejected'. data: { adminReason: string (min 1) }"
+        },
+        {
+          "name": "OrderReturnRefundedSchema",
+          "kind": "schema",
+          "description": "Zod schema extending BaseEventSchema. type='order.return_refunded'. data: { refundAmount: positive number }"
+        },
+        {
+          "name": "PaymentAuthorizedSchema",
+          "kind": "schema",
+          "description": "Zod schema extending BaseEventSchema. type='payment.authorized'. data: { transactionId: string (min 1), amount: positive number, currency: string (min 1) }"
+        },
+        {
+          "name": "PaymentFailedSchema",
+          "kind": "schema",
+          "description": "Zod schema extending BaseEventSchema. type='payment.failed'. data: { reason: string (min 1), retryable: boolean }"
+        },
+        {
+          "name": "PaymentRefundedSchema",
+          "kind": "schema",
+          "description": "Zod schema extending BaseEventSchema. type='payment.refunded'. data: { amount: positive number, currency: string (min 1) }"
+        },
+        {
+          "name": "ProductCreatedSchema",
+          "kind": "schema",
+          "description": "Product event schema (different structure from order/payment — uses 'payload' not 'data', includes 'eventId', not tied to orderId/userId). Fields: eventId (UUID v4), type='product.created', timestamp (ISO 8601). payload: { id (UUID v4), name, description, price, averageRating, categoryIds: string[], categoryNames: string[], tags: string[], inStock: boolean, imageUrl?: string, createdAt (ISO 8601), updatedAt (ISO 8601) }"
+        },
+        {
+          "name": "ProductUpdatedSchema",
+          "kind": "schema",
+          "description": "Same structure as ProductCreatedSchema but type='product.updated'"
+        },
+        {
+          "name": "ProductDeletedSchema",
+          "kind": "schema",
+          "description": "Product delete event. Fields: eventId (UUID v4), type='product.deleted', timestamp (ISO 8601). payload: { id (UUID v4), deletedAt (ISO 8601) }"
+        },
+        {
+          "name": "SearchExecutedSchema",
+          "kind": "schema",
+          "description": "Search analytics event. Fields: eventId (UUID v4), type='search.executed', timestamp (ISO 8601). payload: { query: string, resultCount: number, facetsApplied: Record<string, string[]>, userId?: string, responseTimeMs: number }"
+        },
+        {
+          "name": "createOrderEvent",
+          "kind": "function",
+          "description": "Factory with type-safe overloads for all 9 order event types. Params: (type: OrderEventType, params: { orderId: number, userId: number, correlationId?: string, timestamp?: string, data: <event-specific-data> }). Returns typed event object. Auto-generates correlationId (UUID v4) and timestamp (ISO 8601) if omitted. Throws ZodError on invalid input."
+        },
+        {
+          "name": "createPaymentEvent",
+          "kind": "function",
+          "description": "Factory with type-safe overloads for all 3 payment event types. Params: (type: 'payment.authorized'|'payment.failed'|'payment.refunded', params: { orderId: number, userId: number, correlationId?: string, timestamp?: string, data: <event-specific-data> }). Returns typed event object. Auto-generates correlationId and timestamp if omitted. Throws ZodError on invalid input."
+        },
+        {
+          "name": "createProductCreatedEvent",
+          "kind": "function",
+          "description": "Params: (payload: { id: string (UUID), name: string, description: string, price: number, averageRating: number, categoryIds: string[], categoryNames: string[], tags: string[], inStock: boolean, imageUrl?: string, createdAt: string, updatedAt: string }). Returns ProductCreatedEvent. Auto-generates eventId (UUID v4) and timestamp. Throws ZodError on invalid input."
+        },
+        {
+          "name": "createProductUpdatedEvent",
+          "kind": "function",
+          "description": "Same signature as createProductCreatedEvent. Returns ProductUpdatedEvent. Auto-generates eventId and timestamp. Throws ZodError on invalid input."
+        },
+        {
+          "name": "createProductDeletedEvent",
+          "kind": "function",
+          "description": "Params: (payload: { id: string (UUID), deletedAt: string (ISO 8601) }). Returns ProductDeletedEvent. Auto-generates eventId and timestamp. Throws ZodError on invalid input."
+        },
+        {
+          "name": "createSearchExecutedEvent",
+          "kind": "function",
+          "description": "Params: (payload: { query: string, resultCount: number, facetsApplied: Record<string, string[]>, userId?: string, responseTimeMs: number }). Returns SearchExecutedEvent. Auto-generates eventId and timestamp. Throws ZodError on invalid input."
+        },
+        {
+          "name": "validateEvent",
+          "kind": "function",
+          "description": "Safe universal validator. Params: (event: unknown). Returns { success: true, data: AllEvents } | { success: false, error: Error }. Never throws. Routes to correct schema by event.type discriminator. Handles null/undefined and missing type field with descriptive error messages. Use this for consumer-side validation."
+        }
+      ]
+    }
+  ],
+  "updatedAt": "2026-03-01T17:02:35.393Z"
+}
