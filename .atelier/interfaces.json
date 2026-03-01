@@ -1,0 +1,498 @@
+{
+  "updatedAt": "2026-03-01T12:00:00Z",
+  "stack": ["TypeScript 5.3", "Node.js", "Zod 3.22", "Jest 29.7", "ts-jest 29.1", "CommonJS"],
+  "sections": [
+    {
+      "type": "exports",
+      "entries": [
+        {
+          "name": "EVENT_TYPES",
+          "kind": "constant",
+          "description": "Map of all 16 event type string literals: ORDER_CREATED through ORDER_RETURN_REFUNDED, PAYMENT_AUTHORIZED/FAILED/REFUNDED, PRODUCT_CREATED/UPDATED/DELETED, SEARCH_EXECUTED"
+        },
+        {
+          "name": "TOPICS",
+          "kind": "constant",
+          "description": "Kafka topic name constants: ORDER_EVENTS ('order.events'), PAYMENT_EVENTS ('payment.events'), PRODUCT_EVENTS ('product.events'), SEARCH_EVENTS ('search.events')"
+        },
+        {
+          "name": "CONSUMER_GROUPS",
+          "kind": "constant",
+          "description": "Kafka consumer group constants: NOTIFICATION_WORKER ('notification-worker-group'), PRODUCT_SERVICE ('product-service-group'), PAYMENT_SERVICE ('payment-service-group'), ORDER_SERVICE ('order-service-group'), ANALYTICS_SERVICE ('analytics-service-group'), SEARCH_INDEXER ('search-indexer')"
+        },
+        {
+          "name": "BaseEventSchema",
+          "kind": "schema",
+          "description": "Common base Zod schema for order and payment events: type (enum), orderId (int+), userId (int+), correlationId (UUID v4), timestamp (ISO 8601)"
+        },
+        {
+          "name": "OrderItemSchema",
+          "kind": "schema",
+          "description": "Zod schema for an order line item: productId (int+), quantity (int+), price (number+)"
+        },
+        {
+          "name": "OrderCreatedSchema",
+          "kind": "schema",
+          "description": "Extends BaseEventSchema. data: { items: OrderItem[] (min 1), totalAmount: number+, shippingAddress?: string }"
+        },
+        {
+          "name": "OrderConfirmedSchema",
+          "kind": "schema",
+          "description": "Extends BaseEventSchema. data: { items: OrderItem[] (min 1), totalAmount: number+, paymentId?: string }"
+        },
+        {
+          "name": "OrderShippedSchema",
+          "kind": "schema",
+          "description": "Extends BaseEventSchema. data: { trackingNumber?: string, carrier?: string, estimatedDelivery?: datetime }"
+        },
+        {
+          "name": "OrderCancelledSchema",
+          "kind": "schema",
+          "description": "Extends BaseEventSchema. data: { reason: string, cancelledBy: 'user'|'system'|'admin', refundAmount?: number>=0, items?: OrderItem[], totalAmount?: number+, previousStatus?: 'created'|'confirmed' }"
+        },
+        {
+          "name": "OrderDeliveredSchema",
+          "kind": "schema",
+          "description": "Extends BaseEventSchema. data: { items: OrderItem[] (min 1), totalAmount: number+ }"
+        },
+        {
+          "name": "OrderReturnRequestedSchema",
+          "kind": "schema",
+          "description": "Extends BaseEventSchema. data: { category: string, reason?: string, items: OrderItem[] (min 1), totalAmount: number+ }"
+        },
+        {
+          "name": "OrderReturnApprovedSchema",
+          "kind": "schema",
+          "description": "Extends BaseEventSchema. data: { items: OrderItem[] (min 1), totalAmount: number+ }"
+        },
+        {
+          "name": "OrderReturnRejectedSchema",
+          "kind": "schema",
+          "description": "Extends BaseEventSchema. data: { adminReason: string }"
+        },
+        {
+          "name": "OrderReturnRefundedSchema",
+          "kind": "schema",
+          "description": "Extends BaseEventSchema. data: { refundAmount: number+ }"
+        },
+        {
+          "name": "PaymentAuthorizedSchema",
+          "kind": "schema",
+          "description": "Extends BaseEventSchema. data: { transactionId: string, amount: number+, currency: string }"
+        },
+        {
+          "name": "PaymentFailedSchema",
+          "kind": "schema",
+          "description": "Extends BaseEventSchema. data: { reason: string, retryable: boolean }"
+        },
+        {
+          "name": "PaymentRefundedSchema",
+          "kind": "schema",
+          "description": "Extends BaseEventSchema. data: { amount: number+, currency: string }"
+        },
+        {
+          "name": "ProductCreatedSchema",
+          "kind": "schema",
+          "description": "Standalone schema (not extending BaseEventSchema). Fields: eventId (UUID), type ('product.created'), timestamp (ISO 8601), payload: { id (UUID), name, description, price, averageRating, categoryIds: string[], categoryNames: string[], tags: string[], inStock: boolean, imageUrl?: string, createdAt, updatedAt }"
+        },
+        {
+          "name": "ProductUpdatedSchema",
+          "kind": "schema",
+          "description": "Standalone schema. Same structure as ProductCreatedSchema but type is 'product.updated'"
+        },
+        {
+          "name": "ProductDeletedSchema",
+          "kind": "schema",
+          "description": "Standalone schema. Fields: eventId (UUID), type ('product.deleted'), timestamp (ISO 8601), payload: { id (UUID), deletedAt: datetime }"
+        },
+        {
+          "name": "SearchExecutedSchema",
+          "kind": "schema",
+          "description": "Standalone schema. Fields: eventId (UUID), type ('search.executed'), timestamp (ISO 8601), payload: { query: string, resultCount: number, facetsApplied: Record<string, string[]>, userId?: string, responseTimeMs: number }"
+        },
+        {
+          "name": "createOrderEvent",
+          "kind": "function",
+          "description": "Overloaded factory for all 9 order event types. Params: (type, { orderId, userId, data, correlationId?, timestamp? }). Auto-generates correlationId (UUID v4) and timestamp (ISO 8601) if not provided. Throws ZodError on invalid input. Return type narrows to the specific event type based on the type argument."
+        },
+        {
+          "name": "createPaymentEvent",
+          "kind": "function",
+          "description": "Overloaded factory for all 3 payment event types (PAYMENT_AUTHORIZED, PAYMENT_FAILED, PAYMENT_REFUNDED). Same auto-generation and throwing behavior as createOrderEvent."
+        },
+        {
+          "name": "validateEvent",
+          "kind": "function",
+          "description": "Safe consumer-side validator. Signature: (event: unknown) => ValidationResult. Discriminates on event.type to select the correct schema. Never throws. Returns { success: true, data: AllEvents } or { success: false, error: Error }."
+        },
+        {
+          "name": "createProductCreatedEvent",
+          "kind": "function",
+          "description": "Factory for product.created events. Accepts ProductCreatedEvent['payload']. Auto-generates eventId (UUID v4) and timestamp. Throws ZodError on invalid input."
+        },
+        {
+          "name": "createProductUpdatedEvent",
+          "kind": "function",
+          "description": "Factory for product.updated events. Accepts ProductUpdatedEvent['payload']. Auto-generates eventId (UUID v4) and timestamp."
+        },
+        {
+          "name": "createProductDeletedEvent",
+          "kind": "function",
+          "description": "Factory for product.deleted events. Accepts ProductDeletedEvent['payload'] ({ id, deletedAt }). Auto-generates eventId (UUID v4) and timestamp."
+        },
+        {
+          "name": "createSearchExecutedEvent",
+          "kind": "function",
+          "description": "Factory for search.executed events. Accepts SearchExecutedEvent['payload']. Auto-generates eventId (UUID v4) and timestamp."
+        },
+        {
+          "name": "EventType",
+          "kind": "type",
+          "description": "Union of all event type string literals derived from EVENT_TYPES values"
+        },
+        {
+          "name": "BaseEvent",
+          "kind": "type",
+          "description": "TypeScript type inferred from BaseEventSchema: { type, orderId, userId, correlationId, timestamp }"
+        },
+        {
+          "name": "OrderItem",
+          "kind": "type",
+          "description": "TypeScript type for order line items: { productId: number, quantity: number, price: number }"
+        },
+        {
+          "name": "Topic",
+          "kind": "type",
+          "description": "Union of Kafka topic string literals derived from TOPICS values"
+        },
+        {
+          "name": "ConsumerGroup",
+          "kind": "type",
+          "description": "Union of consumer group string literals derived from CONSUMER_GROUPS values"
+        },
+        {
+          "name": "OrderCreatedEvent",
+          "kind": "type",
+          "description": "TypeScript type inferred from OrderCreatedSchema"
+        },
+        {
+          "name": "OrderConfirmedEvent",
+          "kind": "type",
+          "description": "TypeScript type inferred from OrderConfirmedSchema"
+        },
+        {
+          "name": "OrderShippedEvent",
+          "kind": "type",
+          "description": "TypeScript type inferred from OrderShippedSchema"
+        },
+        {
+          "name": "OrderCancelledEvent",
+          "kind": "type",
+          "description": "TypeScript type inferred from OrderCancelledSchema"
+        },
+        {
+          "name": "OrderDeliveredEvent",
+          "kind": "type",
+          "description": "TypeScript type inferred from OrderDeliveredSchema"
+        },
+        {
+          "name": "OrderReturnRequestedEvent",
+          "kind": "type",
+          "description": "TypeScript type inferred from OrderReturnRequestedSchema"
+        },
+        {
+          "name": "OrderReturnApprovedEvent",
+          "kind": "type",
+          "description": "TypeScript type inferred from OrderReturnApprovedSchema"
+        },
+        {
+          "name": "OrderReturnRejectedEvent",
+          "kind": "type",
+          "description": "TypeScript type inferred from OrderReturnRejectedSchema"
+        },
+        {
+          "name": "OrderReturnRefundedEvent",
+          "kind": "type",
+          "description": "TypeScript type inferred from OrderReturnRefundedSchema"
+        },
+        {
+          "name": "PaymentAuthorizedEvent",
+          "kind": "type",
+          "description": "TypeScript type inferred from PaymentAuthorizedSchema"
+        },
+        {
+          "name": "PaymentFailedEvent",
+          "kind": "type",
+          "description": "TypeScript type inferred from PaymentFailedSchema"
+        },
+        {
+          "name": "PaymentRefundedEvent",
+          "kind": "type",
+          "description": "TypeScript type inferred from PaymentRefundedSchema"
+        },
+        {
+          "name": "ProductCreatedEvent",
+          "kind": "type",
+          "description": "TypeScript type inferred from ProductCreatedSchema"
+        },
+        {
+          "name": "ProductUpdatedEvent",
+          "kind": "type",
+          "description": "TypeScript type inferred from ProductUpdatedSchema"
+        },
+        {
+          "name": "ProductDeletedEvent",
+          "kind": "type",
+          "description": "TypeScript type inferred from ProductDeletedSchema"
+        },
+        {
+          "name": "SearchExecutedEvent",
+          "kind": "type",
+          "description": "TypeScript type inferred from SearchExecutedSchema"
+        },
+        {
+          "name": "OrderEvent",
+          "kind": "type",
+          "description": "Discriminated union of all 9 order event types"
+        },
+        {
+          "name": "PaymentEvent",
+          "kind": "type",
+          "description": "Discriminated union of all 3 payment event types"
+        },
+        {
+          "name": "ProductEvent",
+          "kind": "type",
+          "description": "Discriminated union of ProductCreatedEvent | ProductUpdatedEvent | ProductDeletedEvent"
+        },
+        {
+          "name": "SearchEvent",
+          "kind": "type",
+          "description": "Alias for SearchExecutedEvent"
+        },
+        {
+          "name": "AllEvents",
+          "kind": "type",
+          "description": "Discriminated union of OrderEvent | PaymentEvent | ProductEvent | SearchEvent — used as the return type of validateEvent on success"
+        },
+        {
+          "name": "ValidationResult",
+          "kind": "type",
+          "description": "{ success: true, data: AllEvents } | { success: false, error: Error } — never-throwing result type from validateEvent"
+        }
+      ]
+    },
+    {
+      "type": "event_contracts",
+      "entries": [
+        {
+          "eventType": "order.created",
+          "topic": "order.events",
+          "schema": "OrderCreatedSchema",
+          "baseFields": "type, orderId (int+), userId (int+), correlationId (UUID v4), timestamp (ISO 8601)",
+          "data": {
+            "items": "OrderItem[] (min 1)",
+            "totalAmount": "number (positive)",
+            "shippingAddress": "string (optional)"
+          },
+          "description": "Published by Order Service when a new order is created. Triggers payment processing."
+        },
+        {
+          "eventType": "order.confirmed",
+          "topic": "order.events",
+          "schema": "OrderConfirmedSchema",
+          "baseFields": "type, orderId (int+), userId (int+), correlationId (UUID v4), timestamp (ISO 8601)",
+          "data": {
+            "items": "OrderItem[] (min 1)",
+            "totalAmount": "number (positive)",
+            "paymentId": "string (optional)"
+          },
+          "description": "Published by Order Service after payment.authorized is received. Triggers inventory decrement in Product Service."
+        },
+        {
+          "eventType": "order.shipped",
+          "topic": "order.events",
+          "schema": "OrderShippedSchema",
+          "baseFields": "type, orderId (int+), userId (int+), correlationId (UUID v4), timestamp (ISO 8601)",
+          "data": {
+            "trackingNumber": "string (optional)",
+            "carrier": "string (optional)",
+            "estimatedDelivery": "datetime string (optional)"
+          },
+          "description": "Published by Order Service when an admin ships a confirmed order."
+        },
+        {
+          "eventType": "order.cancelled",
+          "topic": "order.events",
+          "schema": "OrderCancelledSchema",
+          "baseFields": "type, orderId (int+), userId (int+), correlationId (UUID v4), timestamp (ISO 8601)",
+          "data": {
+            "reason": "string (required, min 1)",
+            "cancelledBy": "'user' | 'system' | 'admin'",
+            "refundAmount": "number (non-negative, optional)",
+            "items": "OrderItem[] (optional)",
+            "totalAmount": "number (positive, optional)",
+            "previousStatus": "'created' | 'confirmed' (optional)"
+          },
+          "description": "Published by Order Service on payment failure or customer/admin cancellation. previousStatus='confirmed' signals Product Service to restore inventory."
+        },
+        {
+          "eventType": "order.delivered",
+          "topic": "order.events",
+          "schema": "OrderDeliveredSchema",
+          "baseFields": "type, orderId (int+), userId (int+), correlationId (UUID v4), timestamp (ISO 8601)",
+          "data": {
+            "items": "OrderItem[] (min 1)",
+            "totalAmount": "number (positive)"
+          },
+          "description": "Published by Order Service when an admin marks a shipped order as delivered. Starts the 30-day return window."
+        },
+        {
+          "eventType": "order.return_requested",
+          "topic": "order.events",
+          "schema": "OrderReturnRequestedSchema",
+          "baseFields": "type, orderId (int+), userId (int+), correlationId (UUID v4), timestamp (ISO 8601)",
+          "data": {
+            "category": "string (required, min 1)",
+            "reason": "string (optional)",
+            "items": "OrderItem[] (min 1)",
+            "totalAmount": "number (positive)"
+          },
+          "description": "Published by Order Service when a customer requests a return within the 30-day window."
+        },
+        {
+          "eventType": "order.return_approved",
+          "topic": "order.events",
+          "schema": "OrderReturnApprovedSchema",
+          "baseFields": "type, orderId (int+), userId (int+), correlationId (UUID v4), timestamp (ISO 8601)",
+          "data": {
+            "items": "OrderItem[] (min 1)",
+            "totalAmount": "number (positive)"
+          },
+          "description": "Published by Order Service when an admin approves a return. Triggers inventory restoration in Product Service and refund creation in Payment Service."
+        },
+        {
+          "eventType": "order.return_rejected",
+          "topic": "order.events",
+          "schema": "OrderReturnRejectedSchema",
+          "baseFields": "type, orderId (int+), userId (int+), correlationId (UUID v4), timestamp (ISO 8601)",
+          "data": {
+            "adminReason": "string (required, min 1)"
+          },
+          "description": "Published by Order Service when an admin rejects a return request. Terminal state."
+        },
+        {
+          "eventType": "order.return_refunded",
+          "topic": "order.events",
+          "schema": "OrderReturnRefundedSchema",
+          "baseFields": "type, orderId (int+), userId (int+), correlationId (UUID v4), timestamp (ISO 8601)",
+          "data": {
+            "refundAmount": "number (positive)"
+          },
+          "description": "Published by Order Service after consuming payment.refunded. Terminal state of the return saga."
+        },
+        {
+          "eventType": "payment.authorized",
+          "topic": "payment.events",
+          "schema": "PaymentAuthorizedSchema",
+          "baseFields": "type, orderId (int+), userId (int+), correlationId (UUID v4), timestamp (ISO 8601)",
+          "data": {
+            "transactionId": "string (required, min 1)",
+            "amount": "number (positive)",
+            "currency": "string (required, min 1)"
+          },
+          "description": "Published by Payment Service on successful mock payment authorization (90% probability)."
+        },
+        {
+          "eventType": "payment.failed",
+          "topic": "payment.events",
+          "schema": "PaymentFailedSchema",
+          "baseFields": "type, orderId (int+), userId (int+), correlationId (UUID v4), timestamp (ISO 8601)",
+          "data": {
+            "reason": "string (required, min 1)",
+            "retryable": "boolean"
+          },
+          "description": "Published by Payment Service on mock payment failure (10% probability)."
+        },
+        {
+          "eventType": "payment.refunded",
+          "topic": "payment.events",
+          "schema": "PaymentRefundedSchema",
+          "baseFields": "type, orderId (int+), userId (int+), correlationId (UUID v4), timestamp (ISO 8601)",
+          "data": {
+            "amount": "number (positive)",
+            "currency": "string (required, min 1)"
+          },
+          "description": "Published by Payment Service after processing a refund triggered by order.return_approved."
+        },
+        {
+          "eventType": "product.created",
+          "topic": "product.events",
+          "schema": "ProductCreatedSchema",
+          "topLevelFields": "eventId (UUID), type ('product.created'), timestamp (ISO 8601)",
+          "payload": {
+            "id": "string (UUID)",
+            "name": "string",
+            "description": "string",
+            "price": "number",
+            "averageRating": "number",
+            "categoryIds": "string[]",
+            "categoryNames": "string[]",
+            "tags": "string[]",
+            "inStock": "boolean",
+            "imageUrl": "string (optional)",
+            "createdAt": "datetime string",
+            "updatedAt": "datetime string"
+          },
+          "description": "Published by Product Service when a new product is created. Consumed by Search Indexer Worker to add document to Meilisearch."
+        },
+        {
+          "eventType": "product.updated",
+          "topic": "product.events",
+          "schema": "ProductUpdatedSchema",
+          "topLevelFields": "eventId (UUID), type ('product.updated'), timestamp (ISO 8601)",
+          "payload": {
+            "id": "string (UUID)",
+            "name": "string",
+            "description": "string",
+            "price": "number",
+            "averageRating": "number",
+            "categoryIds": "string[]",
+            "categoryNames": "string[]",
+            "tags": "string[]",
+            "inStock": "boolean",
+            "imageUrl": "string (optional)",
+            "createdAt": "datetime string",
+            "updatedAt": "datetime string"
+          },
+          "description": "Published by Product Service when a product is updated. Consumed by Search Indexer Worker to update document in Meilisearch."
+        },
+        {
+          "eventType": "product.deleted",
+          "topic": "product.events",
+          "schema": "ProductDeletedSchema",
+          "topLevelFields": "eventId (UUID), type ('product.deleted'), timestamp (ISO 8601)",
+          "payload": {
+            "id": "string (UUID)",
+            "deletedAt": "datetime string"
+          },
+          "description": "Published by Product Service when a product is deleted. Consumed by Search Indexer Worker to remove document from Meilisearch."
+        },
+        {
+          "eventType": "search.executed",
+          "topic": "search.events",
+          "schema": "SearchExecutedSchema",
+          "topLevelFields": "eventId (UUID), type ('search.executed'), timestamp (ISO 8601)",
+          "payload": {
+            "query": "string",
+            "resultCount": "number",
+            "facetsApplied": "Record<string, string[]>",
+            "userId": "string (optional)",
+            "responseTimeMs": "number"
+          },
+          "description": "Published by Product Service after each search request. Consumed by Analytics Service for search analytics."
+        }
+      ]
+    }
+  ]
+}
