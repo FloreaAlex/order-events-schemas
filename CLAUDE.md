@@ -1,205 +1,214 @@
 # Order Events Schemas
 
-## System Architecture Overview
+## Architecture Context
 
 **Workspace**: Archmap Test Platform
-**Architecture Style**: Microservices with event-driven communication
-**This Component's Role**: Shared npm package (@florea-alex/order-events-schemas) containing Zod schemas, event type constants, topic/consumer group constants, and helper functions for all order lifecycle Kafka events. Used by Order Service, Product Service, Notification Worker, and Payment Service.
-**Component Type**: library
-**Position in Flow**: Receives from: Order Service (other), Product Service (other), Notification Worker (other), Payment Service (other)
+**Role**: Shared npm package — single source of truth for all Kafka event contracts across the platform.
+**Type**: library
+**Package name**: `@florea-alex/order-events-schemas` (v0.3.0)
+**Connections** (consumers of this library):
+  - ← Order Service via npm import
+  - ← Payment Service via npm import
+  - ← Product Service via npm import
+  - ← Notification Worker via npm import
+  - ← Analytics Service via npm import
+  - ← Search Indexer Worker via npm import
 
-**Related Components**:
-  - ← **Order Service** (service) - other
-  - ← **Product Service** (service) - other
-  - ← **Notification Worker** (worker) - other
-  - ← **Payment Service** (service) - other
+## Tech Stack
 
-## Purpose
+- TypeScript 5.3 (strict mode, compiled to CommonJS ES2022)
+- Zod 3.22 (runtime schema validation — only production dependency)
+- Jest 29.7 + ts-jest 29.1 (testing)
+- Node.js built-in `crypto.randomUUID` (no external UUID library)
 
-This library provides runtime-validated Zod schemas, TypeScript types, and helper functions for all event-driven communication between services. It ensures a single source of truth for event contracts and prevents schema drift between producers and consumers.
+## Key Directories
 
-Part of the event-driven microservices architecture as defined in ADR-002. Services use Kafka for asynchronous communication, and this library guarantees type safety and runtime validation for all events.
+- `src/events/` — One file per event type. Each file exports a Zod schema, a TypeScript type, and (for product/search events) a factory function.
+- `src/helpers/create-event.ts` — `createOrderEvent`, `createPaymentEvent`, `validateEvent` — the primary factory/validation API for order and payment events.
+- `src/topics.ts` — `TOPICS` and `CONSUMER_GROUPS` constants (Kafka infrastructure strings).
+- `src/index.ts` — Barrel re-export file. Everything consumers import comes from here.
+- `tests/` — Three Jest test files: `schemas.test.ts` (order/payment), `product-events.test.ts`, `search-events.test.ts`.
+- `dist/` — Compiled CommonJS output. Committed to the repo; rebuilt on `prepare`.
 
-## Patterns
+## Critical: Two Different Event Envelope Shapes
 
-### Schema Validation with Zod
-All event structures use Zod schemas for runtime validation. Base schema defines common fields (type, orderId, userId, correlationId, timestamp), extended by specific event schemas. Helper functions (`createOrderEvent`, `createPaymentEvent`, `validateEvent`) provide factory and validation patterns with type-safe interfaces.
+This library has **two distinct envelope structures**. Getting these wrong is the most common mistake.
 
-### Event-Driven Architecture
-Defines contracts for Kafka-based order lifecycle events. Topics and consumer groups are exported as typed constants to ensure consistency across services.
+### Order & Payment events — `BaseEventSchema`-based
 
-## Component Details
+```
+{
+  type:          string  (order.* or payment.*)
+  orderId:       number  (positive int)
+  userId:        number  (positive int)
+  correlationId: string  (UUID v4)
+  timestamp:     string  (ISO 8601)
+  data: { ... }          (event-specific payload, field name is "data")
+}
+```
 
-**Purpose**: Shared npm package (@florea-alex/order-events-schemas) containing Zod schemas, event type constants, topic/consumer group constants, and helper functions for all order lifecycle Kafka events. Used by Order Service, Product Service, Notification Worker, and Payment Service.
+Used for: all `order.*` and `payment.*` events.
+Created via: `createOrderEvent(EVENT_TYPES.ORDER_CREATED, { orderId, userId, data })` or `createPaymentEvent(...)`.
 
-**Tech Stack**: 
-- TypeScript 5.3+ (compiled to CommonJS)
-- Zod 3.22 (runtime schema validation)
-- Jest 29.7 (testing framework)
-- ts-jest 29.1 (TypeScript testing)
+### Product & Search events — standalone schemas
 
-**Architecture**: Shared library with typed exports, modular event schemas, and factory functions
+```
+{
+  eventId:   string  (UUID v4 — auto-generated, NOT the same as correlationId)
+  type:      string  (product.* or search.*)
+  timestamp: string  (ISO 8601)
+  payload: { ... }   (event-specific payload, field name is "payload", NOT "data")
+}
+```
 
-**Key Directories**:
-- `src/` - Source code
-  - `src/events/` - Event schemas (base, order-created, order-confirmed, order-shipped, order-cancelled, order-delivered, order-return-requested, order-return-approved, order-return-rejected, order-return-refunded, payment-authorized, payment-failed, payment-refunded, product-events, search-events)
-  - `src/helpers/` - Factory and validation helper functions
-  - `src/topics.ts` - Kafka topic and consumer group constants
-- `tests/` - Jest test suite with comprehensive schema validation tests (190 tests)
-- `dist/` - Compiled output (CommonJS module)
+Used for: `product.created`, `product.updated`, `product.deleted`, `search.executed`.
+Created via: `createProductCreatedEvent(payload)`, `createProductUpdatedEvent(payload)`, `createProductDeletedEvent(payload)`, `createSearchExecutedEvent(payload)`.
 
-## Dependencies
+Note: Product/search events have **no** `orderId`, `userId`, or `correlationId` fields.
 
-**Runtime Dependencies**:
-- `zod` ^3.22.0 - Runtime schema validation
+## Exported API
 
-**Development Dependencies**:
-- `@types/jest` ^29.5.0
-- `@types/node` ^20.0.0
-- `jest` ^29.7.0
-- `ts-jest` ^29.1.0
-- `typescript` ^5.3.3
+### Constants
 
-**Message Queues**:
-- Kafka topics: `order.events`, `payment.events`, `product.events`, `search.events`
-- Consumer groups: `notification-worker-group`, `product-service-group`, `payment-service-group`, `order-service-group`, `analytics-service-group`, `search-indexer`
+**`EVENT_TYPES`** — all event type strings as a `const` object:
+- Order: `ORDER_CREATED`, `ORDER_CONFIRMED`, `ORDER_SHIPPED`, `ORDER_CANCELLED`, `ORDER_DELIVERED`, `ORDER_RETURN_REQUESTED`, `ORDER_RETURN_APPROVED`, `ORDER_RETURN_REJECTED`, `ORDER_RETURN_REFUNDED`
+- Payment: `PAYMENT_AUTHORIZED`, `PAYMENT_FAILED`, `PAYMENT_REFUNDED`
+- Product: `PRODUCT_CREATED`, `PRODUCT_UPDATED`, `PRODUCT_DELETED`
+- Search: `SEARCH_EXECUTED`
 
-**Databases**: None (library does not interact with databases)
-
-**External APIs**: None (library provides schemas for other services)
-
-## API Contracts
-
-### Exported Constants
-
-**EVENT_TYPES**:
-- `ORDER_CREATED: 'order.created'`
-- `ORDER_CONFIRMED: 'order.confirmed'`
-- `ORDER_SHIPPED: 'order.shipped'`
-- `ORDER_CANCELLED: 'order.cancelled'`
-- `ORDER_DELIVERED: 'order.delivered'`
-- `ORDER_RETURN_REQUESTED: 'order.return_requested'`
-- `ORDER_RETURN_APPROVED: 'order.return_approved'`
-- `ORDER_RETURN_REJECTED: 'order.return_rejected'`
-- `ORDER_RETURN_REFUNDED: 'order.return_refunded'`
-- `PAYMENT_AUTHORIZED: 'payment.authorized'`
-- `PAYMENT_FAILED: 'payment.failed'`
-- `PAYMENT_REFUNDED: 'payment.refunded'`
-- `PRODUCT_CREATED: 'product.created'`
-- `PRODUCT_UPDATED: 'product.updated'`
-- `PRODUCT_DELETED: 'product.deleted'`
-- `SEARCH_EXECUTED: 'search.executed'`
-
-**TOPICS**:
+**`TOPICS`** — Kafka topic strings:
 - `ORDER_EVENTS: 'order.events'`
 - `PAYMENT_EVENTS: 'payment.events'`
 - `PRODUCT_EVENTS: 'product.events'`
 - `SEARCH_EVENTS: 'search.events'`
 
-**CONSUMER_GROUPS**:
+**`CONSUMER_GROUPS`** — Kafka consumer group strings:
 - `NOTIFICATION_WORKER: 'notification-worker-group'`
 - `PRODUCT_SERVICE: 'product-service-group'`
 - `PAYMENT_SERVICE: 'payment-service-group'`
 - `ORDER_SERVICE: 'order-service-group'`
 - `ANALYTICS_SERVICE: 'analytics-service-group'`
-- `SEARCH_INDEXER: 'search-indexer'`
+- `SEARCH_INDEXER: 'search-indexer'` ← note: no `-group` suffix, unlike the others
 
-### Exported Schemas
+### Schemas (Zod)
 
-**Base Schema**: `BaseEventSchema` (type, orderId, userId, correlationId, timestamp)
+**`BaseEventSchema`** — base fields for order/payment events (type, orderId, userId, correlationId, timestamp). Note: `type` in `BaseEventSchema` is a `z.enum` of all order/payment event types only — product and search types are NOT in this enum.
 
-**Order Event Schemas**:
-- `OrderItemSchema` - Product item schema
-- `OrderCreatedSchema` - order.created event
-- `OrderConfirmedSchema` - order.confirmed event
-- `OrderShippedSchema` - order.shipped event
-- `OrderCancelledSchema` - order.cancelled event — data: reason (string), cancelledBy (user|system|admin), refundAmount? (number), items? (OrderItem[]), totalAmount? (number), previousStatus? ('created'|'confirmed')
-- `OrderDeliveredSchema` - order.delivered event — data: items (OrderItem[]), totalAmount (number)
-- `OrderReturnRequestedSchema` - order.return_requested event — data: category (string), reason? (string), items (OrderItem[]), totalAmount (number)
-- `OrderReturnApprovedSchema` - order.return_approved event — data: items (OrderItem[]), totalAmount (number)
-- `OrderReturnRejectedSchema` - order.return_rejected event — data: adminReason (string)
-- `OrderReturnRefundedSchema` - order.return_refunded event — data: refundAmount (number)
+**Order event schemas** (each extends `BaseEventSchema`):
 
-**Payment Event Schemas**:
-- `PaymentAuthorizedSchema` - payment.authorized event
-- `PaymentFailedSchema` - payment.failed event
-- `PaymentRefundedSchema` - payment.refunded event — data: amount (number), currency (string)
+| Schema | `data` fields |
+|--------|--------------|
+| `OrderCreatedSchema` | `items: OrderItem[]` (min 1), `totalAmount: number+`, `shippingAddress?: string` |
+| `OrderConfirmedSchema` | `items: OrderItem[]` (min 1), `totalAmount: number+`, `paymentId?: string` |
+| `OrderShippedSchema` | `trackingNumber?: string`, `carrier?: string`, `estimatedDelivery?: string` (ISO) |
+| `OrderCancelledSchema` | `reason: string`, `cancelledBy: 'user'|'system'|'admin'`, `refundAmount?: number≥0`, `items?: OrderItem[]`, `totalAmount?: number+`, `previousStatus?: 'created'|'confirmed'` |
+| `OrderDeliveredSchema` | `items: OrderItem[]` (min 1), `totalAmount: number+` |
+| `OrderReturnRequestedSchema` | `category: string`, `reason?: string`, `items: OrderItem[]` (min 1), `totalAmount: number+` |
+| `OrderReturnApprovedSchema` | `items: OrderItem[]` (min 1), `totalAmount: number+` |
+| `OrderReturnRejectedSchema` | `adminReason: string` |
+| `OrderReturnRefundedSchema` | `refundAmount: number+` |
 
-### Exported Helper Functions
+**`OrderItemSchema`** — `{ productId: number+int, quantity: number+int, price: number+ }`
 
-**createOrderEvent(type, params)**: Factory function for creating order events with validation. Auto-generates correlationId (UUID v4) and timestamp (ISO 8601) if not provided. Throws ZodError on validation failure.
+**Payment event schemas** (each extends `BaseEventSchema`):
 
-**createPaymentEvent(type, params)**: Factory function for creating payment events with validation. Auto-generates correlationId and timestamp if not provided. Throws ZodError on validation failure.
+| Schema | `data` fields |
+|--------|--------------|
+| `PaymentAuthorizedSchema` | `transactionId: string`, `amount: number+`, `currency: string` |
+| `PaymentFailedSchema` | `reason: string`, `retryable: boolean` |
+| `PaymentRefundedSchema` | `amount: number+`, `currency: string` |
 
-**validateEvent(event)**: Universal safe validation function that returns `{ success: boolean, data?, error? }` without throwing. Handles all event families (order, payment, product, search) by discriminating on the `type` field and routing to the correct schema. Validates any event against its appropriate schema based on the event type.
+**Product event schemas** (standalone, `payload` field not `data`):
 
-### Exported Types
+| Schema | `payload` fields |
+|--------|-----------------|
+| `ProductCreatedSchema` | Full product: `id (UUID)`, `name`, `description`, `price`, `averageRating`, `categoryIds: string[]`, `categoryNames: string[]`, `tags: string[]`, `inStock: boolean`, `imageUrl?: string`, `createdAt`, `updatedAt` |
+| `ProductUpdatedSchema` | Same as ProductCreatedSchema payload |
+| `ProductDeletedSchema` | `id (UUID)`, `deletedAt (ISO)` |
 
-**Base Types**: `EventType`, `BaseEvent`, `OrderItem`, `Topic`, `ConsumerGroup`
+**`SearchExecutedSchema`** (standalone, `payload` field):
+- `query: string`, `resultCount: number`, `facetsApplied: Record<string, string[]>`, `userId?: string`, `responseTimeMs: number`
 
-**Event Types**: `OrderCreatedEvent`, `OrderConfirmedEvent`, `OrderShippedEvent`, `OrderCancelledEvent`, `OrderDeliveredEvent`, `OrderReturnRequestedEvent`, `OrderReturnApprovedEvent`, `OrderReturnRejectedEvent`, `OrderReturnRefundedEvent`, `PaymentAuthorizedEvent`, `PaymentFailedEvent`, `PaymentRefundedEvent`
+### Factory Functions
 
-**Union Types**: `OrderEvent`, `PaymentEvent`, `ProductEvent`, `SearchEvent`, `AllEvents`
+**`createOrderEvent(type, params)`** — Overloaded function with full TypeScript type inference. Accepts `{ orderId, userId, data, correlationId?, timestamp? }`. Auto-generates `correlationId` (UUID v4) and `timestamp` (ISO 8601) if omitted. Validates via Zod; **throws `ZodError`** on invalid input.
 
-**Utility Types**: `ValidationResult`
+**`createPaymentEvent(type, params)`** — Same pattern as `createOrderEvent` but for payment events.
 
-### Events Published
+**`createProductCreatedEvent(payload)`**, **`createProductUpdatedEvent(payload)`**, **`createProductDeletedEvent(payload)`**, **`createSearchExecutedEvent(payload)`** — Auto-generate `eventId` and `timestamp`. **Throw `ZodError`** on invalid input.
 
-This library does not publish events itself. It provides schemas and helpers for services to publish events to:
-- `order.events` topic: order.created, order.confirmed, order.shipped, order.cancelled, order.delivered, order.return_requested, order.return_approved, order.return_rejected, order.return_refunded
-- `payment.events` topic: payment.authorized, payment.failed, payment.refunded
+**`validateEvent(event: unknown)`** — Universal safe validator. Dispatches on `event.type` to the correct schema. Returns `{ success: true, data: AllEvents }` or `{ success: false, error: Error }`. **Never throws**. Handles null/undefined/missing type gracefully. Use this in Kafka consumers where you want to log-and-skip invalid messages.
 
-### Events Consumed
+### Types
 
-This library does not consume events. It provides validation schemas for services that consume events from the topics listed above.
+- `EventType`, `Topic`, `ConsumerGroup` (derived from `as const` objects via `typeof X[keyof typeof X]`)
+- `BaseEvent`, `OrderItem`
+- Per-event types: `OrderCreatedEvent`, `OrderConfirmedEvent`, ..., `PaymentAuthorizedEvent`, ..., `ProductCreatedEvent`, ..., `SearchExecutedEvent`
+- Union types: `OrderEvent`, `PaymentEvent`, `ProductEvent`, `SearchEvent`, `AllEvents`
+- `ValidationResult` — discriminated union of `{ success: true; data: AllEvents }` and `{ success: false; error: Error }`
+
+## Patterns
+
+### Schema Extension
+
+Order/payment schemas use `BaseEventSchema.extend({ type: z.literal(EVENT_TYPES.X), data: DataSchema })`. The `type` field is narrowed from the base enum to a literal. This enables TypeScript discriminated union narrowing on `event.type`.
+
+### Factory Function Overloads
+
+`createOrderEvent` and `createPaymentEvent` use TypeScript function overloads to return the precise event type for each `EVENT_TYPES` constant. Callers get full type inference without casting.
+
+### validateEvent Dispatch
+
+`validateEvent` uses a `switch` on `event.type` to route to the correct schema. Unknown types return `{ success: false }`. The function wraps everything in try/catch so Zod parse errors are converted to the `ValidationResult` shape.
 
 ## Conventions
 
-### Event Structure
-All events follow a common base structure with type-specific data payloads. Base fields are validated using `BaseEventSchema`, and each event type extends this with specific data requirements.
-
-### Field Validation Rules
-- **IDs**: Positive integers (orderId, userId, productId)
-- **Amounts**: Positive numbers (totalAmount, price, amount, refundAmount)
-- **Quantities**: Positive integers
-- **Strings**: Non-empty minimum length 1 for required strings (transactionId, currency, reason)
-- **UUIDs**: correlationId must be valid UUID v4 format
-- **Timestamps**: ISO 8601 datetime format
-
-### Naming Conventions
-- Event types use dot notation: `order.created`, `payment.authorized`
-- Field names use camelCase: `orderId`, `userId`, `correlationId`
+- All field names use camelCase: `orderId`, `totalAmount`, `correlationId`
+- IDs are positive integers for order/payment events; UUIDs for product/search events
+- Amounts must be positive numbers (no zero); `refundAmount` on `OrderCancelledSchema` uses `nonnegative` (zero allowed)
+- Timestamps are ISO 8601 strings validated with `z.string().datetime()`
+- Required strings use `z.string().min(1)` — empty strings are rejected
+- Optional fields use `.optional()` (undefined allowed); no `.nullable()` — null values are not used
+- Event type strings use dot notation: `order.created`, `payment.authorized`, `product.created`
 - Constants use SCREAMING_SNAKE_CASE: `EVENT_TYPES`, `TOPICS`, `CONSUMER_GROUPS`
 
-### Versioning Strategy
-Once published, event schemas should maintain backwards compatibility. Version bumps required for any schema changes. Services must update their dependency to use new schemas.
+## Adding a New Event Type
 
-## Boundaries & Constraints
+1. Add the event type string to `EVENT_TYPES` in `src/events/base.ts`. If it's an order/payment event, also add it to the `z.enum` array in `BaseEventSchema`.
+2. Create `src/events/your-event.ts` following the existing pattern.
+3. Export schema and type from `src/index.ts`.
+4. If order/payment: add an overload to `createOrderEvent`/`createPaymentEvent` in `src/helpers/create-event.ts` and add the case to both switches (`createOrderEvent` and `validateEvent`).
+5. Add tests in `tests/`.
+6. Run `npm run build` — consumers import from `dist/`.
 
-✅ **Responsibilities**:
-- Define and export Zod schemas for all order and payment events
-- Provide TypeScript types inferred from schemas for type safety
-- Export constants for event types, Kafka topics, and consumer groups
-- Offer factory functions for event creation with auto-generated fields (correlationId, timestamp)
-- Provide safe validation function for runtime event validation
-- Maintain backwards compatibility for published schemas
+## Commands
 
-❌ **NOT Responsible For**:
-- Producing or consuming Kafka messages (handled by individual services)
-- Business logic or event processing workflows
-- Database operations or persistence
-- Authentication or authorization
-- Service orchestration or communication
-- Kafka broker configuration or infrastructure
+```bash
+npm run build        # Compile TypeScript → dist/ (required before consumers can import)
+npm run dev          # TypeScript compiler in watch mode
+npm run typecheck    # Type-check without emitting (CI validation)
+npm test             # Run Jest test suite
+npm run test:watch   # Jest in watch mode
+```
 
-🚫 **Do NOT**:
-- Add service-specific business logic to schemas (keep schemas generic and reusable)
-- Break schema compatibility without a versioning strategy
-- Include secrets, credentials, or environment-specific configuration
-- Add dependencies beyond schema validation (keep library lightweight)
+Coverage threshold: 80% for branches, functions, lines, and statements (enforced by Jest config).
+
+## Dependencies
+
+- **Runtime**: `zod ^3.22.0` only
+- **No database, no Kafka, no HTTP** — pure schema/validation library
+- **No external UUID library** — uses Node.js built-in `crypto.randomUUID`
+
+## Boundaries
+
+**Owns**: Event schema definitions, TypeScript types, factory functions, Kafka topic/consumer group constants.
+
+**Does NOT own**: Kafka producers/consumers, message routing, business logic, service orchestration, database access, HTTP endpoints.
+
+**Do NOT**:
+- Add service-specific business logic to schemas
+- Add runtime dependencies beyond `zod`
+- Implement Kafka producers or consumers here
 - Hardcode service URLs or infrastructure details
-- Implement Kafka producers or consumers in this library
-
----
-
-*This file was auto-generated by Atelier. Update it as the component evolves.*
+- Break backwards compatibility on published schemas without a version bump — all consuming services must be updated together
+- Use `npm file:` references when consuming this package from services running in Docker (use GitHub package references instead)
