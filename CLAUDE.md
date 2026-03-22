@@ -5,7 +5,7 @@
 **Workspace**: Archmap Test Platform
 **Role**: Shared npm package — single source of truth for all Kafka event contracts across the platform.
 **Type**: library
-**Package name**: `@florea-alex/order-events-schemas` (v0.3.0)
+**Package name**: `@florea-alex/order-events-schemas` (v0.3.1)
 **Connections** (consumers of this library):
   - ← Order Service via npm import
   - ← Payment Service via npm import
@@ -28,7 +28,7 @@
 - `src/topics.ts` — `TOPICS` and `CONSUMER_GROUPS` constants (Kafka infrastructure strings).
 - `src/index.ts` — Barrel re-export file. Everything consumers import comes from here.
 - `tests/` — Three Jest test files: `schemas.test.ts` (order/payment), `product-events.test.ts`, `search-events.test.ts`.
-- `dist/` — Compiled CommonJS output. Committed to the repo; rebuilt on `prepare`.
+- `dist/` — Compiled CommonJS output. Listed in `.gitignore` (not committed). Rebuilt automatically via the `prepare` script when consumers `npm install` from GitHub.
 
 ## Critical: Two Different Event Envelope Shapes
 
@@ -98,7 +98,7 @@ Note: Product/search events have **no** `orderId`, `userId`, or `correlationId` 
 
 | Schema | `data` fields |
 |--------|--------------|
-| `OrderCreatedSchema` | `items: OrderItem[]` (min 1), `totalAmount: number+`, `shippingAddress?: string` |
+| `OrderCreatedSchema` | `items: OrderItem[]` (min 1), `totalAmount: number+`, `shippingAddress?: string`, `couponCode?: string` (min 1), `discountType?: 'percentage'\|'fixed_amount'`, `discountValue?: number+`, `discountAmount?: number≥0`, `subtotal?: number+` |
 | `OrderConfirmedSchema` | `items: OrderItem[]` (min 1), `totalAmount: number+`, `paymentId?: string` |
 | `OrderShippedSchema` | `trackingNumber?: string`, `carrier?: string`, `estimatedDelivery?: string` (ISO) |
 | `OrderCancelledSchema` | `reason: string`, `cancelledBy: 'user'|'system'|'admin'`, `refundAmount?: number≥0`, `items?: OrderItem[]`, `totalAmount?: number+`, `previousStatus?: 'created'|'confirmed'` |

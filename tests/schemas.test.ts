@@ -103,6 +103,123 @@ describe('OrderCreatedSchema', () => {
   });
 });
 
+describe('OrderCreatedSchema — discount fields', () => {
+  const baseEvent = {
+    type: EVENT_TYPES.ORDER_CREATED,
+    orderId: 1,
+    userId: 100,
+    correlationId: randomUUID(),
+    timestamp: new Date().toISOString(),
+    data: {
+      items: [{ productId: 1, quantity: 2, price: 50.00 }],
+      totalAmount: 100.00,
+    },
+  };
+
+  test('validates order.created event WITH all 5 discount fields', () => {
+    const event = {
+      ...baseEvent,
+      data: {
+        ...baseEvent.data,
+        couponCode: 'SAVE15',
+        discountType: 'percentage' as const,
+        discountValue: 15,
+        discountAmount: 15.00,
+        subtotal: 100.00,
+      },
+    };
+    expect(() => OrderCreatedSchema.parse(event)).not.toThrow();
+  });
+
+  test('validates order.created event WITHOUT any discount fields (backward compat)', () => {
+    expect(() => OrderCreatedSchema.parse(baseEvent)).not.toThrow();
+  });
+
+  test('validates order.created event with discountType=fixed_amount', () => {
+    const event = {
+      ...baseEvent,
+      data: {
+        ...baseEvent.data,
+        couponCode: 'FLAT10',
+        discountType: 'fixed_amount' as const,
+        discountValue: 10,
+        discountAmount: 10.00,
+        subtotal: 100.00,
+      },
+    };
+    expect(() => OrderCreatedSchema.parse(event)).not.toThrow();
+  });
+
+  test('validates order.created event with discountAmount=0 (no discount applied)', () => {
+    const event = {
+      ...baseEvent,
+      data: {
+        ...baseEvent.data,
+        couponCode: 'ZEROCOUPON',
+        discountAmount: 0,
+      },
+    };
+    expect(() => OrderCreatedSchema.parse(event)).not.toThrow();
+  });
+
+  test('rejects order.created event with empty couponCode string', () => {
+    const event = {
+      ...baseEvent,
+      data: {
+        ...baseEvent.data,
+        couponCode: '',
+      },
+    };
+    expect(() => OrderCreatedSchema.parse(event)).toThrow();
+  });
+
+  test('rejects order.created event with invalid discountType ("bogus")', () => {
+    const event = {
+      ...baseEvent,
+      data: {
+        ...baseEvent.data,
+        discountType: 'bogus',
+      },
+    };
+    expect(() => OrderCreatedSchema.parse(event)).toThrow();
+  });
+
+  test('rejects order.created event with negative discountValue', () => {
+    const event = {
+      ...baseEvent,
+      data: {
+        ...baseEvent.data,
+        discountValue: -5,
+      },
+    };
+    expect(() => OrderCreatedSchema.parse(event)).toThrow();
+  });
+
+  test('rejects order.created event with negative discountAmount', () => {
+    const event = {
+      ...baseEvent,
+      data: {
+        ...baseEvent.data,
+        discountAmount: -1,
+      },
+    };
+    expect(() => OrderCreatedSchema.parse(event)).toThrow();
+  });
+
+  test('OrderCreatedEvent TypeScript type includes optional discount fields', () => {
+    // Compile-time check via type assertion — if this compiles, the type is correct
+    const event = OrderCreatedSchema.parse(baseEvent);
+    const _typeCheck: {
+      couponCode?: string;
+      discountType?: 'percentage' | 'fixed_amount';
+      discountValue?: number;
+      discountAmount?: number;
+      subtotal?: number;
+    } = event.data;
+    expect(_typeCheck).toBeDefined();
+  });
+});
+
 describe('OrderConfirmedSchema', () => {
   const validEvent = {
     type: EVENT_TYPES.ORDER_CONFIRMED,
@@ -299,6 +416,31 @@ describe('createOrderEvent', () => {
     }
   });
 
+  test('creates valid order.created event with discount fields', () => {
+    const event = createOrderEvent(EVENT_TYPES.ORDER_CREATED, {
+      orderId: 1,
+      userId: 100,
+      data: {
+        items: [{ productId: 1, quantity: 2, price: 50.00 }],
+        totalAmount: 100.00,
+        couponCode: 'SAVE15',
+        discountType: 'percentage',
+        discountValue: 15,
+        discountAmount: 15.00,
+        subtotal: 100.00,
+      },
+    });
+
+    expect(event.type).toBe(EVENT_TYPES.ORDER_CREATED);
+    if (event.type === EVENT_TYPES.ORDER_CREATED) {
+      expect(event.data.couponCode).toBe('SAVE15');
+      expect(event.data.discountType).toBe('percentage');
+      expect(event.data.discountValue).toBe(15);
+      expect(event.data.discountAmount).toBe(15.00);
+      expect(event.data.subtotal).toBe(100.00);
+    }
+  });
+
   test('creates valid order.confirmed event', () => {
     const event = createOrderEvent(EVENT_TYPES.ORDER_CONFIRMED, {
       orderId: 1,
@@ -444,6 +586,32 @@ describe('validateEvent', () => {
     expect(result.success).toBe(true);
     expect(result.data).toEqual(event);
     expect(result.error).toBeUndefined();
+  });
+
+  test('returns success for valid order.created event with discount fields', () => {
+    const event = {
+      type: EVENT_TYPES.ORDER_CREATED,
+      orderId: 1,
+      userId: 100,
+      correlationId: randomUUID(),
+      timestamp: new Date().toISOString(),
+      data: {
+        items: [{ productId: 1, quantity: 2, price: 50.00 }],
+        totalAmount: 100.00,
+        couponCode: 'SAVE15',
+        discountType: 'percentage',
+        discountValue: 15,
+        discountAmount: 15.00,
+        subtotal: 100.00,
+      },
+    };
+
+    const result = validateEvent(event);
+    expect(result.success).toBe(true);
+    if (result.success && result.data?.type === EVENT_TYPES.ORDER_CREATED) {
+      expect(result.data.data.couponCode).toBe('SAVE15');
+      expect(result.data.data.discountType).toBe('percentage');
+    }
   });
 
   test('returns failure for invalid event (empty items)', () => {
