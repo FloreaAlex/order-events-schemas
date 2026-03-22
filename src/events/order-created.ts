@@ -19,7 +19,7 @@ const OrderCreatedDataSchema = z.object({
   items: z.array(OrderItemSchema).min(1),
   totalAmount: z.number().positive(),
   shippingAddress: z.string().optional(),
-  couponCode: z.string().optional(),
+  couponCode: z.string().min(1).optional(),
   discountType: z.enum(['percentage', 'fixed_amount']).optional(),
   discountValue: z.number().positive().optional(),
   discountAmount: z.number().min(0).optional(),
