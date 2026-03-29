@@ -14,6 +14,7 @@ const OrderCancelledDataSchema = z.object({
   totalAmount: z.number().positive().optional(),
   // previousStatus tells consumers (e.g. Product Service) whether inventory needs restoration
   previousStatus: z.enum(['created', 'confirmed']).optional(),
+  pointsRedeemed: z.number().int().nonnegative().optional(),
 });
 
 /**

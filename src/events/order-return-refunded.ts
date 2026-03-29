@@ -6,6 +6,7 @@ import { BaseEventSchema, EVENT_TYPES } from './base';
  */
 const OrderReturnRefundedDataSchema = z.object({
   refundAmount: z.number().positive(),
+  pointsRedeemed: z.number().int().nonnegative().optional(),
 });
 
 /**

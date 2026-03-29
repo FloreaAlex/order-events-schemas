@@ -8,6 +8,7 @@ import { OrderItemSchema } from './order-created';
 const OrderDeliveredDataSchema = z.object({
   items: z.array(OrderItemSchema).min(1),
   totalAmount: z.number().positive(),
+  total: z.number().nonnegative().optional(),
 });
 
 /**

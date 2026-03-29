@@ -18,6 +18,7 @@ export const CONSUMER_GROUPS = {
   ORDER_SERVICE: 'order-service-group',
   ANALYTICS_SERVICE: 'analytics-service-group',
   SEARCH_INDEXER: 'search-indexer',
+  LOYALTY_SERVICE: 'loyalty-service-group',
 } as const;
 
 export type Topic = typeof TOPICS[keyof typeof TOPICS];

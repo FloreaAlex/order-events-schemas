@@ -24,6 +24,9 @@ const OrderCreatedDataSchema = z.object({
   discountValue: z.number().positive().optional(),
   discountAmount: z.number().min(0).optional(),
   subtotal: z.number().positive().optional(),
+  pointsRedeemed: z.number().int().nonnegative().optional(),
+  pointsDiscountAmount: z.number().nonnegative().optional(),
+  pointsRedemptionRate: z.number().int().positive().optional(),
 });
 
 /**
