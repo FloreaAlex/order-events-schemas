@@ -220,6 +220,85 @@ describe('OrderCreatedSchema — discount fields', () => {
   });
 });
 
+describe('OrderCreatedSchema — points fields', () => {
+  const baseEvent = {
+    type: EVENT_TYPES.ORDER_CREATED,
+    orderId: 1,
+    userId: 100,
+    correlationId: randomUUID(),
+    timestamp: new Date().toISOString(),
+    data: {
+      items: [{ productId: 1, quantity: 2, price: 50.00 }],
+      totalAmount: 90.00,
+    },
+  };
+
+  test('validates order.created event WITH all 3 points fields', () => {
+    const event = {
+      ...baseEvent,
+      data: {
+        ...baseEvent.data,
+        pointsRedeemed: 1000,
+        pointsDiscountAmount: 10.00,
+        pointsRedemptionRate: 100,
+      },
+    };
+    expect(() => OrderCreatedSchema.parse(event)).not.toThrow();
+  });
+
+  test('validates order.created event WITHOUT any points fields (backward compat)', () => {
+    expect(() => OrderCreatedSchema.parse(baseEvent)).not.toThrow();
+  });
+
+  test('validates order.created event with pointsRedeemed=0 (no points used)', () => {
+    const event = {
+      ...baseEvent,
+      data: { ...baseEvent.data, pointsRedeemed: 0 },
+    };
+    expect(() => OrderCreatedSchema.parse(event)).not.toThrow();
+  });
+
+  test('rejects order.created event with negative pointsRedeemed', () => {
+    const event = {
+      ...baseEvent,
+      data: { ...baseEvent.data, pointsRedeemed: -1 },
+    };
+    expect(() => OrderCreatedSchema.parse(event)).toThrow();
+  });
+
+  test('rejects order.created event with non-integer pointsRedeemed (0.5)', () => {
+    const event = {
+      ...baseEvent,
+      data: { ...baseEvent.data, pointsRedeemed: 0.5 },
+    };
+    expect(() => OrderCreatedSchema.parse(event)).toThrow();
+  });
+
+  test('rejects order.created event with negative pointsDiscountAmount', () => {
+    const event = {
+      ...baseEvent,
+      data: { ...baseEvent.data, pointsDiscountAmount: -5 },
+    };
+    expect(() => OrderCreatedSchema.parse(event)).toThrow();
+  });
+
+  test('rejects order.created event with zero pointsRedemptionRate (must be positive)', () => {
+    const event = {
+      ...baseEvent,
+      data: { ...baseEvent.data, pointsRedemptionRate: 0 },
+    };
+    expect(() => OrderCreatedSchema.parse(event)).toThrow();
+  });
+
+  test('rejects order.created event with non-integer pointsRedemptionRate', () => {
+    const event = {
+      ...baseEvent,
+      data: { ...baseEvent.data, pointsRedemptionRate: 1.5 },
+    };
+    expect(() => OrderCreatedSchema.parse(event)).toThrow();
+  });
+});
+
 describe('OrderConfirmedSchema', () => {
   const validEvent = {
     type: EVENT_TYPES.ORDER_CONFIRMED,
@@ -441,6 +520,27 @@ describe('createOrderEvent', () => {
     }
   });
 
+  test('creates valid order.created event with points fields', () => {
+    const event = createOrderEvent(EVENT_TYPES.ORDER_CREATED, {
+      orderId: 1,
+      userId: 100,
+      data: {
+        items: [{ productId: 1, quantity: 2, price: 50.00 }],
+        totalAmount: 90.00,
+        pointsRedeemed: 1000,
+        pointsDiscountAmount: 10.00,
+        pointsRedemptionRate: 100,
+      },
+    });
+
+    expect(event.type).toBe(EVENT_TYPES.ORDER_CREATED);
+    if (event.type === EVENT_TYPES.ORDER_CREATED) {
+      expect(event.data.pointsRedeemed).toBe(1000);
+      expect(event.data.pointsDiscountAmount).toBe(10.00);
+      expect(event.data.pointsRedemptionRate).toBe(100);
+    }
+  });
+
   test('creates valid order.confirmed event', () => {
     const event = createOrderEvent(EVENT_TYPES.ORDER_CONFIRMED, {
       orderId: 1,
@@ -611,6 +711,93 @@ describe('validateEvent', () => {
     if (result.success && result.data?.type === EVENT_TYPES.ORDER_CREATED) {
       expect(result.data.data.couponCode).toBe('SAVE15');
       expect(result.data.data.discountType).toBe('percentage');
+    }
+  });
+
+  test('returns success for valid order.created event with points fields', () => {
+    const event = {
+      type: EVENT_TYPES.ORDER_CREATED,
+      orderId: 1,
+      userId: 100,
+      correlationId: randomUUID(),
+      timestamp: new Date().toISOString(),
+      data: {
+        items: [{ productId: 1, quantity: 2, price: 50.00 }],
+        totalAmount: 90.00,
+        pointsRedeemed: 1000,
+        pointsDiscountAmount: 10.00,
+        pointsRedemptionRate: 100,
+      },
+    };
+
+    const result = validateEvent(event);
+    expect(result.success).toBe(true);
+    if (result.success && result.data?.type === EVENT_TYPES.ORDER_CREATED) {
+      expect(result.data.data.pointsRedeemed).toBe(1000);
+      expect(result.data.data.pointsDiscountAmount).toBe(10.00);
+      expect(result.data.data.pointsRedemptionRate).toBe(100);
+    }
+  });
+
+  test('returns success for valid order.delivered event with total field', () => {
+    const event = {
+      type: EVENT_TYPES.ORDER_DELIVERED,
+      orderId: 1,
+      userId: 100,
+      correlationId: randomUUID(),
+      timestamp: new Date().toISOString(),
+      data: {
+        items: [{ productId: 1, quantity: 2, price: 19.99 }],
+        totalAmount: 39.98,
+        total: 35.00,
+      },
+    };
+
+    const result = validateEvent(event);
+    expect(result.success).toBe(true);
+    if (result.success && result.data?.type === EVENT_TYPES.ORDER_DELIVERED) {
+      expect(result.data.data.total).toBe(35.00);
+    }
+  });
+
+  test('returns success for valid order.cancelled event with pointsRedeemed', () => {
+    const event = {
+      type: EVENT_TYPES.ORDER_CANCELLED,
+      orderId: 1,
+      userId: 100,
+      correlationId: randomUUID(),
+      timestamp: new Date().toISOString(),
+      data: {
+        reason: 'Customer requested cancellation',
+        cancelledBy: 'user',
+        pointsRedeemed: 500,
+      },
+    };
+
+    const result = validateEvent(event);
+    expect(result.success).toBe(true);
+    if (result.success && result.data?.type === EVENT_TYPES.ORDER_CANCELLED) {
+      expect(result.data.data.pointsRedeemed).toBe(500);
+    }
+  });
+
+  test('returns success for valid order.return_refunded event with pointsRedeemed', () => {
+    const event = {
+      type: EVENT_TYPES.ORDER_RETURN_REFUNDED,
+      orderId: 1,
+      userId: 100,
+      correlationId: randomUUID(),
+      timestamp: new Date().toISOString(),
+      data: {
+        refundAmount: 29.99,
+        pointsRedeemed: 300,
+      },
+    };
+
+    const result = validateEvent(event);
+    expect(result.success).toBe(true);
+    if (result.success && result.data?.type === EVENT_TYPES.ORDER_RETURN_REFUNDED) {
+      expect(result.data.data.pointsRedeemed).toBe(300);
     }
   });
 
@@ -1054,6 +1241,114 @@ describe('OrderDeliveredSchema', () => {
   test('rejects order.delivered event with wrong event type', () => {
     const invalidEvent = { ...validEvent, type: EVENT_TYPES.ORDER_SHIPPED };
     expect(() => OrderDeliveredSchema.parse(invalidEvent)).toThrow();
+  });
+});
+
+describe('OrderDeliveredSchema — total field', () => {
+  const baseEvent = {
+    type: EVENT_TYPES.ORDER_DELIVERED,
+    orderId: 1,
+    userId: 100,
+    correlationId: randomUUID(),
+    timestamp: new Date().toISOString(),
+    data: {
+      items: [{ productId: 1, quantity: 2, price: 19.99 }],
+      totalAmount: 39.98,
+    },
+  };
+
+  test('validates order.delivered event WITH total field', () => {
+    const event = { ...baseEvent, data: { ...baseEvent.data, total: 35.00 } };
+    expect(() => OrderDeliveredSchema.parse(event)).not.toThrow();
+  });
+
+  test('validates order.delivered event WITHOUT total field (backward compat)', () => {
+    expect(() => OrderDeliveredSchema.parse(baseEvent)).not.toThrow();
+  });
+
+  test('validates order.delivered event with total=0 (fully discounted)', () => {
+    const event = { ...baseEvent, data: { ...baseEvent.data, total: 0 } };
+    expect(() => OrderDeliveredSchema.parse(event)).not.toThrow();
+  });
+
+  test('rejects order.delivered event with negative total', () => {
+    const event = { ...baseEvent, data: { ...baseEvent.data, total: -1 } };
+    expect(() => OrderDeliveredSchema.parse(event)).toThrow();
+  });
+});
+
+describe('OrderCancelledSchema — pointsRedeemed field', () => {
+  const baseEvent = {
+    type: EVENT_TYPES.ORDER_CANCELLED,
+    orderId: 1,
+    userId: 100,
+    correlationId: randomUUID(),
+    timestamp: new Date().toISOString(),
+    data: {
+      reason: 'Customer requested cancellation',
+      cancelledBy: 'user' as const,
+    },
+  };
+
+  test('validates order.cancelled event WITH pointsRedeemed', () => {
+    const event = { ...baseEvent, data: { ...baseEvent.data, pointsRedeemed: 500 } };
+    expect(() => OrderCancelledSchema.parse(event)).not.toThrow();
+  });
+
+  test('validates order.cancelled event WITHOUT pointsRedeemed (backward compat)', () => {
+    expect(() => OrderCancelledSchema.parse(baseEvent)).not.toThrow();
+  });
+
+  test('validates order.cancelled event with pointsRedeemed=0', () => {
+    const event = { ...baseEvent, data: { ...baseEvent.data, pointsRedeemed: 0 } };
+    expect(() => OrderCancelledSchema.parse(event)).not.toThrow();
+  });
+
+  test('rejects order.cancelled event with negative pointsRedeemed', () => {
+    const event = { ...baseEvent, data: { ...baseEvent.data, pointsRedeemed: -10 } };
+    expect(() => OrderCancelledSchema.parse(event)).toThrow();
+  });
+
+  test('rejects order.cancelled event with non-integer pointsRedeemed', () => {
+    const event = { ...baseEvent, data: { ...baseEvent.data, pointsRedeemed: 2.5 } };
+    expect(() => OrderCancelledSchema.parse(event)).toThrow();
+  });
+});
+
+describe('OrderReturnRefundedSchema — pointsRedeemed field', () => {
+  const baseEvent = {
+    type: EVENT_TYPES.ORDER_RETURN_REFUNDED,
+    orderId: 1,
+    userId: 100,
+    correlationId: randomUUID(),
+    timestamp: new Date().toISOString(),
+    data: {
+      refundAmount: 29.99,
+    },
+  };
+
+  test('validates order.return_refunded event WITH pointsRedeemed', () => {
+    const event = { ...baseEvent, data: { ...baseEvent.data, pointsRedeemed: 300 } };
+    expect(() => OrderReturnRefundedSchema.parse(event)).not.toThrow();
+  });
+
+  test('validates order.return_refunded event WITHOUT pointsRedeemed (backward compat)', () => {
+    expect(() => OrderReturnRefundedSchema.parse(baseEvent)).not.toThrow();
+  });
+
+  test('validates order.return_refunded event with pointsRedeemed=0', () => {
+    const event = { ...baseEvent, data: { ...baseEvent.data, pointsRedeemed: 0 } };
+    expect(() => OrderReturnRefundedSchema.parse(event)).not.toThrow();
+  });
+
+  test('rejects order.return_refunded event with negative pointsRedeemed', () => {
+    const event = { ...baseEvent, data: { ...baseEvent.data, pointsRedeemed: -5 } };
+    expect(() => OrderReturnRefundedSchema.parse(event)).toThrow();
+  });
+
+  test('rejects order.return_refunded event with non-integer pointsRedeemed', () => {
+    const event = { ...baseEvent, data: { ...baseEvent.data, pointsRedeemed: 1.1 } };
+    expect(() => OrderReturnRefundedSchema.parse(event)).toThrow();
   });
 });
 

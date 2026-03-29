@@ -5,7 +5,7 @@
 **Workspace**: Archmap Test Platform
 **Role**: Shared npm package — single source of truth for all Kafka event contracts across the platform.
 **Type**: library
-**Package name**: `@florea-alex/order-events-schemas` (v0.3.1)
+**Package name**: `@florea-alex/order-events-schemas` (v0.4.0)
 **Connections** (consumers of this library):
   - ← Order Service via npm import
   - ← Payment Service via npm import
@@ -74,6 +74,7 @@ Note: Product/search events have **no** `orderId`, `userId`, or `correlationId` 
 - Order: `ORDER_CREATED`, `ORDER_CONFIRMED`, `ORDER_SHIPPED`, `ORDER_CANCELLED`, `ORDER_DELIVERED`, `ORDER_RETURN_REQUESTED`, `ORDER_RETURN_APPROVED`, `ORDER_RETURN_REJECTED`, `ORDER_RETURN_REFUNDED`
 - Payment: `PAYMENT_AUTHORIZED`, `PAYMENT_FAILED`, `PAYMENT_REFUNDED`
 - Product: `PRODUCT_CREATED`, `PRODUCT_UPDATED`, `PRODUCT_DELETED`
+- Review: `REVIEW_CREATED` (uses `TOPICS.PRODUCT_EVENTS`)
 - Search: `SEARCH_EXECUTED`
 
 **`TOPICS`** — Kafka topic strings:
@@ -89,6 +90,7 @@ Note: Product/search events have **no** `orderId`, `userId`, or `correlationId` 
 - `ORDER_SERVICE: 'order-service-group'`
 - `ANALYTICS_SERVICE: 'analytics-service-group'`
 - `SEARCH_INDEXER: 'search-indexer'` ← note: no `-group` suffix, unlike the others
+- `LOYALTY_SERVICE: 'loyalty-service-group'`
 
 ### Schemas (Zod)
 
@@ -98,15 +100,15 @@ Note: Product/search events have **no** `orderId`, `userId`, or `correlationId` 
 
 | Schema | `data` fields |
 |--------|--------------|
-| `OrderCreatedSchema` | `items: OrderItem[]` (min 1), `totalAmount: number+`, `shippingAddress?: string`, `couponCode?: string` (min 1), `discountType?: 'percentage'\|'fixed_amount'`, `discountValue?: number+`, `discountAmount?: number≥0`, `subtotal?: number+` |
+| `OrderCreatedSchema` | `items: OrderItem[]` (min 1), `totalAmount: number+`, `shippingAddress?: string`, `couponCode?: string` (min 1), `discountType?: 'percentage'\|'fixed_amount'`, `discountValue?: number+`, `discountAmount?: number≥0`, `subtotal?: number+`, `pointsRedeemed?: int≥0`, `pointsDiscountAmount?: number≥0`, `pointsRedemptionRate?: int+` |
 | `OrderConfirmedSchema` | `items: OrderItem[]` (min 1), `totalAmount: number+`, `paymentId?: string` |
 | `OrderShippedSchema` | `trackingNumber?: string`, `carrier?: string`, `estimatedDelivery?: string` (ISO) |
-| `OrderCancelledSchema` | `reason: string`, `cancelledBy: 'user'|'system'|'admin'`, `refundAmount?: number≥0`, `items?: OrderItem[]`, `totalAmount?: number+`, `previousStatus?: 'created'|'confirmed'` |
-| `OrderDeliveredSchema` | `items: OrderItem[]` (min 1), `totalAmount: number+` |
+| `OrderCancelledSchema` | `reason: string`, `cancelledBy: 'user'|'system'|'admin'`, `refundAmount?: number≥0`, `items?: OrderItem[]`, `totalAmount?: number+`, `previousStatus?: 'created'|'confirmed'`, `pointsRedeemed?: int≥0` |
+| `OrderDeliveredSchema` | `items: OrderItem[]` (min 1), `totalAmount: number+`, `total?: number≥0` |
 | `OrderReturnRequestedSchema` | `category: string`, `reason?: string`, `items: OrderItem[]` (min 1), `totalAmount: number+` |
 | `OrderReturnApprovedSchema` | `items: OrderItem[]` (min 1), `totalAmount: number+` |
 | `OrderReturnRejectedSchema` | `adminReason: string` |
-| `OrderReturnRefundedSchema` | `refundAmount: number+` |
+| `OrderReturnRefundedSchema` | `refundAmount: number+`, `pointsRedeemed?: int≥0` |
 
 **`OrderItemSchema`** — `{ productId: number+int, quantity: number+int, price: number+ }`
 
@@ -125,6 +127,7 @@ Note: Product/search events have **no** `orderId`, `userId`, or `correlationId` 
 | `ProductCreatedSchema` | Full product: `id (UUID)`, `name`, `description`, `price`, `averageRating`, `categoryIds: string[]`, `categoryNames: string[]`, `tags: string[]`, `inStock: boolean`, `imageUrl?: string`, `createdAt`, `updatedAt` |
 | `ProductUpdatedSchema` | Same as ProductCreatedSchema payload |
 | `ProductDeletedSchema` | `id (UUID)`, `deletedAt (ISO)` |
+| `ReviewCreatedSchema` | `reviewId: int+`, `productId: int+`, `userId: int+`, `rating: int 1–5`, `timestamp (ISO)` |
 
 **`SearchExecutedSchema`** (standalone, `payload` field):
 - `query: string`, `resultCount: number`, `facetsApplied: Record<string, string[]>`, `userId?: string`, `responseTimeMs: number`
@@ -135,7 +138,7 @@ Note: Product/search events have **no** `orderId`, `userId`, or `correlationId` 
 
 **`createPaymentEvent(type, params)`** — Same pattern as `createOrderEvent` but for payment events.
 
-**`createProductCreatedEvent(payload)`**, **`createProductUpdatedEvent(payload)`**, **`createProductDeletedEvent(payload)`**, **`createSearchExecutedEvent(payload)`** — Auto-generate `eventId` and `timestamp`. **Throw `ZodError`** on invalid input.
+**`createProductCreatedEvent(payload)`**, **`createProductUpdatedEvent(payload)`**, **`createProductDeletedEvent(payload)`**, **`createReviewCreatedEvent(payload)`**, **`createSearchExecutedEvent(payload)`** — Auto-generate `eventId` and `timestamp`. **Throw `ZodError`** on invalid input.
 
 **`validateEvent(event: unknown)`** — Universal safe validator. Dispatches on `event.type` to the correct schema. Returns `{ success: true, data: AllEvents }` or `{ success: false, error: Error }`. **Never throws**. Handles null/undefined/missing type gracefully. Use this in Kafka consumers where you want to log-and-skip invalid messages.
 
@@ -143,7 +146,7 @@ Note: Product/search events have **no** `orderId`, `userId`, or `correlationId` 
 
 - `EventType`, `Topic`, `ConsumerGroup` (derived from `as const` objects via `typeof X[keyof typeof X]`)
 - `BaseEvent`, `OrderItem`
-- Per-event types: `OrderCreatedEvent`, `OrderConfirmedEvent`, ..., `PaymentAuthorizedEvent`, ..., `ProductCreatedEvent`, ..., `SearchExecutedEvent`
+- Per-event types: `OrderCreatedEvent`, `OrderConfirmedEvent`, ..., `PaymentAuthorizedEvent`, ..., `ProductCreatedEvent`, ..., `ReviewCreatedEvent`, ..., `SearchExecutedEvent`
 - Union types: `OrderEvent`, `PaymentEvent`, `ProductEvent`, `SearchEvent`, `AllEvents`
 - `ValidationResult` — discriminated union of `{ success: true; data: AllEvents }` and `{ success: false; error: Error }`
 
@@ -177,7 +180,7 @@ Order/payment schemas use `BaseEventSchema.extend({ type: z.literal(EVENT_TYPES.
 1. Add the event type string to `EVENT_TYPES` in `src/events/base.ts`. If it's an order/payment event, also add it to the `z.enum` array in `BaseEventSchema`.
 2. Create `src/events/your-event.ts` following the existing pattern.
 3. Export schema and type from `src/index.ts`.
-4. If order/payment: add an overload to `createOrderEvent`/`createPaymentEvent` in `src/helpers/create-event.ts` and add the case to both switches (`createOrderEvent` and `validateEvent`).
+4. If order/payment: add an overload to `createOrderEvent`/`createPaymentEvent` in `src/helpers/create-event.ts` and add the case to both switches (`createOrderEvent` and `validateEvent`). If product-domain standalone: add the schema to `ProductEvent` union in `create-event.ts` and add the case to `validateEvent`.
 5. Add tests in `tests/`.
 6. Run `npm run build` — consumers import from `dist/`.
 

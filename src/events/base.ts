@@ -20,6 +20,8 @@ export const EVENT_TYPES = {
   PRODUCT_CREATED: 'product.created',
   PRODUCT_UPDATED: 'product.updated',
   PRODUCT_DELETED: 'product.deleted',
+  // Review event type (product.events topic)
+  REVIEW_CREATED: 'review.created',
   // Search analytics event type (search.events topic)
   SEARCH_EXECUTED: 'search.executed',
 } as const;

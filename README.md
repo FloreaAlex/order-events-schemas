@@ -92,12 +92,18 @@ if (result.success) {
 - `EVENT_TYPES.PAYMENT_FAILED` - Payment authorization failed
 - `EVENT_TYPES.PAYMENT_REFUNDED` - Payment refunded
 
+### Review Events (product.events topic)
+
+- `EVENT_TYPES.REVIEW_CREATED` - Product review submitted by a user
+
 ## Topics and Consumer Groups
 
 ```typescript
 // Kafka Topics
 TOPICS.ORDER_EVENTS        // 'order.events'
 TOPICS.PAYMENT_EVENTS      // 'payment.events'
+TOPICS.PRODUCT_EVENTS      // 'product.events' (product.* and review.* events)
+TOPICS.SEARCH_EVENTS       // 'search.events'
 
 // Consumer Groups
 CONSUMER_GROUPS.NOTIFICATION_WORKER  // 'notification-worker-group'
@@ -106,6 +112,7 @@ CONSUMER_GROUPS.PAYMENT_SERVICE      // 'payment-service-group'
 CONSUMER_GROUPS.ORDER_SERVICE        // 'order-service-group'
 CONSUMER_GROUPS.ANALYTICS_SERVICE    // 'analytics-service-group'
 CONSUMER_GROUPS.SEARCH_INDEXER       // 'search-indexer'
+CONSUMER_GROUPS.LOYALTY_SERVICE      // 'loyalty-service-group'
 ```
 
 ## API Reference
@@ -227,6 +234,7 @@ import type {
   OrderCreatedEvent,
   PaymentAuthorizedEvent,
   ProductCreatedEvent,
+  ReviewCreatedEvent,
   SearchExecutedEvent,
   OrderEvent,
   PaymentEvent,
@@ -261,10 +269,12 @@ ISC
 
 ## Version
 
-Current version: **0.3.0**
+Current version: **0.4.0**
 
 ### Changelog
 
+- **0.4.0**: Added `review.created` event type with `ReviewCreatedSchema` + `createReviewCreatedEvent` factory. Added `CONSUMER_GROUPS.LOYALTY_SERVICE`. Extended `OrderCreatedSchema` with optional loyalty points fields (`pointsRedeemed`, `pointsDiscountAmount`, `pointsRedemptionRate`). Extended `OrderDeliveredSchema` with optional `total` field. Extended `OrderCancelledSchema` and `OrderReturnRefundedSchema` with optional `pointsRedeemed` field.
+- **0.3.1**: Extended `OrderCreatedSchema` with optional coupon/discount fields (`couponCode`, `discountType`, `discountValue`, `discountAmount`, `subtotal`).
 - **0.3.0**: Unified validateEvent to handle all event families (order, payment, product, search). Added ProductEvent and SearchEvent union types. Widened AllEvents to include all event families.
 - **0.2.0**: Added return & refund event schemas (order.delivered, order.return_requested, order.return_approved, order.return_rejected, order.return_refunded, payment.refunded)
 - **0.1.0**: Added payment event schemas, new topics, new consumer groups

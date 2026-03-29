@@ -13,11 +13,12 @@ import { PaymentAuthorizedSchema, PaymentAuthorizedEvent } from '../events/payme
 import { PaymentFailedSchema, PaymentFailedEvent } from '../events/payment-failed';
 import { PaymentRefundedSchema, PaymentRefundedEvent } from '../events/payment-refunded';
 import { ProductCreatedSchema, ProductCreatedEvent, ProductUpdatedSchema, ProductUpdatedEvent, ProductDeletedSchema, ProductDeletedEvent } from '../events/product-events';
+import { ReviewCreatedSchema, ReviewCreatedEvent } from '../events/review-created';
 import { SearchExecutedSchema, SearchExecutedEvent } from '../events/search-events';
 
 export type OrderEvent = OrderCreatedEvent | OrderConfirmedEvent | OrderShippedEvent | OrderCancelledEvent | OrderDeliveredEvent | OrderReturnRequestedEvent | OrderReturnApprovedEvent | OrderReturnRejectedEvent | OrderReturnRefundedEvent;
 export type PaymentEvent = PaymentAuthorizedEvent | PaymentFailedEvent | PaymentRefundedEvent;
-export type ProductEvent = ProductCreatedEvent | ProductUpdatedEvent | ProductDeletedEvent;
+export type ProductEvent = ProductCreatedEvent | ProductUpdatedEvent | ProductDeletedEvent | ReviewCreatedEvent;
 export type SearchEvent = SearchExecutedEvent;
 export type AllEvents = OrderEvent | PaymentEvent | ProductEvent | SearchEvent;
 
@@ -279,6 +280,10 @@ export function validateEvent(event: unknown): ValidationResult {
 
       case EVENT_TYPES.PRODUCT_DELETED:
         validatedEvent = ProductDeletedSchema.parse(event);
+        break;
+
+      case EVENT_TYPES.REVIEW_CREATED:
+        validatedEvent = ReviewCreatedSchema.parse(event);
         break;
 
       case EVENT_TYPES.SEARCH_EXECUTED:

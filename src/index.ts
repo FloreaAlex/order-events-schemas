@@ -76,6 +76,10 @@ export type {
   ProductDeletedEvent,
 } from './events/product-events';
 
+// Review events (product.events topic)
+export { ReviewCreatedSchema, createReviewCreatedEvent } from './events/review-created';
+export type { ReviewCreatedEvent } from './events/review-created';
+
 // Search events (search.events topic)
 export { SearchExecutedSchema, createSearchExecutedEvent } from './events/search-events';
 export type { SearchExecutedEvent } from './events/search-events';

@@ -22,8 +22,11 @@ const OrderCreatedDataSchema = z.object({
   couponCode: z.string().min(1).optional(),
   discountType: z.enum(['percentage', 'fixed_amount']).optional(),
   discountValue: z.number().positive().optional(),
-  discountAmount: z.number().min(0).optional(),
+  discountAmount: z.number().nonnegative().optional(),
   subtotal: z.number().positive().optional(),
+  pointsRedeemed: z.number().int().nonnegative().optional(),
+  pointsDiscountAmount: z.number().nonnegative().optional(),
+  pointsRedemptionRate: z.number().int().positive().optional(),
 });
 
 /**
