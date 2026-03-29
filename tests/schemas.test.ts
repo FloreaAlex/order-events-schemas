@@ -520,6 +520,27 @@ describe('createOrderEvent', () => {
     }
   });
 
+  test('creates valid order.created event with points fields', () => {
+    const event = createOrderEvent(EVENT_TYPES.ORDER_CREATED, {
+      orderId: 1,
+      userId: 100,
+      data: {
+        items: [{ productId: 1, quantity: 2, price: 50.00 }],
+        totalAmount: 90.00,
+        pointsRedeemed: 1000,
+        pointsDiscountAmount: 10.00,
+        pointsRedemptionRate: 100,
+      },
+    });
+
+    expect(event.type).toBe(EVENT_TYPES.ORDER_CREATED);
+    if (event.type === EVENT_TYPES.ORDER_CREATED) {
+      expect(event.data.pointsRedeemed).toBe(1000);
+      expect(event.data.pointsDiscountAmount).toBe(10.00);
+      expect(event.data.pointsRedemptionRate).toBe(100);
+    }
+  });
+
   test('creates valid order.confirmed event', () => {
     const event = createOrderEvent(EVENT_TYPES.ORDER_CONFIRMED, {
       orderId: 1,
@@ -690,6 +711,93 @@ describe('validateEvent', () => {
     if (result.success && result.data?.type === EVENT_TYPES.ORDER_CREATED) {
       expect(result.data.data.couponCode).toBe('SAVE15');
       expect(result.data.data.discountType).toBe('percentage');
+    }
+  });
+
+  test('returns success for valid order.created event with points fields', () => {
+    const event = {
+      type: EVENT_TYPES.ORDER_CREATED,
+      orderId: 1,
+      userId: 100,
+      correlationId: randomUUID(),
+      timestamp: new Date().toISOString(),
+      data: {
+        items: [{ productId: 1, quantity: 2, price: 50.00 }],
+        totalAmount: 90.00,
+        pointsRedeemed: 1000,
+        pointsDiscountAmount: 10.00,
+        pointsRedemptionRate: 100,
+      },
+    };
+
+    const result = validateEvent(event);
+    expect(result.success).toBe(true);
+    if (result.success && result.data?.type === EVENT_TYPES.ORDER_CREATED) {
+      expect(result.data.data.pointsRedeemed).toBe(1000);
+      expect(result.data.data.pointsDiscountAmount).toBe(10.00);
+      expect(result.data.data.pointsRedemptionRate).toBe(100);
+    }
+  });
+
+  test('returns success for valid order.delivered event with total field', () => {
+    const event = {
+      type: EVENT_TYPES.ORDER_DELIVERED,
+      orderId: 1,
+      userId: 100,
+      correlationId: randomUUID(),
+      timestamp: new Date().toISOString(),
+      data: {
+        items: [{ productId: 1, quantity: 2, price: 19.99 }],
+        totalAmount: 39.98,
+        total: 35.00,
+      },
+    };
+
+    const result = validateEvent(event);
+    expect(result.success).toBe(true);
+    if (result.success && result.data?.type === EVENT_TYPES.ORDER_DELIVERED) {
+      expect(result.data.data.total).toBe(35.00);
+    }
+  });
+
+  test('returns success for valid order.cancelled event with pointsRedeemed', () => {
+    const event = {
+      type: EVENT_TYPES.ORDER_CANCELLED,
+      orderId: 1,
+      userId: 100,
+      correlationId: randomUUID(),
+      timestamp: new Date().toISOString(),
+      data: {
+        reason: 'Customer requested cancellation',
+        cancelledBy: 'user',
+        pointsRedeemed: 500,
+      },
+    };
+
+    const result = validateEvent(event);
+    expect(result.success).toBe(true);
+    if (result.success && result.data?.type === EVENT_TYPES.ORDER_CANCELLED) {
+      expect(result.data.data.pointsRedeemed).toBe(500);
+    }
+  });
+
+  test('returns success for valid order.return_refunded event with pointsRedeemed', () => {
+    const event = {
+      type: EVENT_TYPES.ORDER_RETURN_REFUNDED,
+      orderId: 1,
+      userId: 100,
+      correlationId: randomUUID(),
+      timestamp: new Date().toISOString(),
+      data: {
+        refundAmount: 29.99,
+        pointsRedeemed: 300,
+      },
+    };
+
+    const result = validateEvent(event);
+    expect(result.success).toBe(true);
+    if (result.success && result.data?.type === EVENT_TYPES.ORDER_RETURN_REFUNDED) {
+      expect(result.data.data.pointsRedeemed).toBe(300);
     }
   });
 

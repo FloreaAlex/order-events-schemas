@@ -14,7 +14,7 @@
         {
           "name": "EVENT_TYPES",
           "kind": "constant",
-          "description": "Object of all event type string literals. Values: ORDER_CREATED='order.created', ORDER_CONFIRMED='order.confirmed', ORDER_SHIPPED='order.shipped', ORDER_CANCELLED='order.cancelled', ORDER_DELIVERED='order.delivered', ORDER_RETURN_REQUESTED='order.return_requested', ORDER_RETURN_APPROVED='order.return_approved', ORDER_RETURN_REJECTED='order.return_rejected', ORDER_RETURN_REFUNDED='order.return_refunded', PAYMENT_AUTHORIZED='payment.authorized', PAYMENT_FAILED='payment.failed', PAYMENT_REFUNDED='payment.refunded', PRODUCT_CREATED='product.created', PRODUCT_UPDATED='product.updated', PRODUCT_DELETED='product.deleted', SEARCH_EXECUTED='search.executed'"
+          "description": "Object of all event type string literals. Values: ORDER_CREATED='order.created', ORDER_CONFIRMED='order.confirmed', ORDER_SHIPPED='order.shipped', ORDER_CANCELLED='order.cancelled', ORDER_DELIVERED='order.delivered', ORDER_RETURN_REQUESTED='order.return_requested', ORDER_RETURN_APPROVED='order.return_approved', ORDER_RETURN_REJECTED='order.return_rejected', ORDER_RETURN_REFUNDED='order.return_refunded', PAYMENT_AUTHORIZED='payment.authorized', PAYMENT_FAILED='payment.failed', PAYMENT_REFUNDED='payment.refunded', PRODUCT_CREATED='product.created', PRODUCT_UPDATED='product.updated', PRODUCT_DELETED='product.deleted', REVIEW_CREATED='review.created', SEARCH_EXECUTED='search.executed'"
         },
         {
           "name": "TOPICS",
@@ -24,7 +24,7 @@
         {
           "name": "CONSUMER_GROUPS",
           "kind": "constant",
-          "description": "Object of Kafka consumer group strings. Values: NOTIFICATION_WORKER='notification-worker-group', PRODUCT_SERVICE='product-service-group', PAYMENT_SERVICE='payment-service-group', ORDER_SERVICE='order-service-group', ANALYTICS_SERVICE='analytics-service-group', SEARCH_INDEXER='search-indexer'"
+          "description": "Object of Kafka consumer group strings. Values: NOTIFICATION_WORKER='notification-worker-group', PRODUCT_SERVICE='product-service-group', PAYMENT_SERVICE='payment-service-group', ORDER_SERVICE='order-service-group', ANALYTICS_SERVICE='analytics-service-group', SEARCH_INDEXER='search-indexer', LOYALTY_SERVICE='loyalty-service-group'"
         },
         {
           "name": "BaseEventSchema",
@@ -39,7 +39,7 @@
         {
           "name": "OrderCreatedSchema",
           "kind": "schema",
-          "description": "Zod schema extending BaseEventSchema. type='order.created'. data: { items: OrderItem[] (min 1), totalAmount: positive number, shippingAddress?: string }"
+          "description": "Zod schema extending BaseEventSchema. type='order.created'. data: { items: OrderItem[] (min 1), totalAmount: positive number, shippingAddress?: string, couponCode?: string (min 1), discountType?: 'percentage'|'fixed_amount', discountValue?: positive number, discountAmount?: non-negative number, subtotal?: positive number, pointsRedeemed?: non-negative int, pointsDiscountAmount?: non-negative number, pointsRedemptionRate?: positive int }"
         },
         {
           "name": "OrderConfirmedSchema",
@@ -54,12 +54,12 @@
         {
           "name": "OrderCancelledSchema",
           "kind": "schema",
-          "description": "Zod schema extending BaseEventSchema. type='order.cancelled'. data: { reason: string (min 1), cancelledBy: 'user'|'system'|'admin', refundAmount?: non-negative number, items?: OrderItem[], totalAmount?: positive number, previousStatus?: 'created'|'confirmed' }"
+          "description": "Zod schema extending BaseEventSchema. type='order.cancelled'. data: { reason: string (min 1), cancelledBy: 'user'|'system'|'admin', refundAmount?: non-negative number, items?: OrderItem[], totalAmount?: positive number, previousStatus?: 'created'|'confirmed', pointsRedeemed?: non-negative int }"
         },
         {
           "name": "OrderDeliveredSchema",
           "kind": "schema",
-          "description": "Zod schema extending BaseEventSchema. type='order.delivered'. data: { items: OrderItem[] (min 1), totalAmount: positive number }"
+          "description": "Zod schema extending BaseEventSchema. type='order.delivered'. data: { items: OrderItem[] (min 1), totalAmount: positive number, total?: non-negative number (post-discount total actually paid) }"
         },
         {
           "name": "OrderReturnRequestedSchema",
@@ -79,7 +79,7 @@
         {
           "name": "OrderReturnRefundedSchema",
           "kind": "schema",
-          "description": "Zod schema extending BaseEventSchema. type='order.return_refunded'. data: { refundAmount: positive number }"
+          "description": "Zod schema extending BaseEventSchema. type='order.return_refunded'. data: { refundAmount: positive number, pointsRedeemed?: non-negative int }"
         },
         {
           "name": "PaymentAuthorizedSchema",
@@ -112,6 +112,11 @@
           "description": "Product delete event. Fields: eventId (UUID v4), type='product.deleted', timestamp (ISO 8601). payload: { id (UUID v4), deletedAt (ISO 8601) }"
         },
         {
+          "name": "ReviewCreatedSchema",
+          "kind": "schema",
+          "description": "Review event schema (standalone product.events topic — same envelope as product events, not order/payment). Fields: eventId (UUID v4), type='review.created', timestamp (ISO 8601). payload: { reviewId: positive int, productId: positive int, userId: positive int, rating: int 1–5, timestamp: ISO 8601 datetime (when review was created) }"
+        },
+        {
           "name": "SearchExecutedSchema",
           "kind": "schema",
           "description": "Search analytics event. Fields: eventId (UUID v4), type='search.executed', timestamp (ISO 8601). payload: { query: string, resultCount: number, facetsApplied: Record<string, string[]>, userId?: string, responseTimeMs: number }"
@@ -142,6 +147,11 @@
           "description": "Params: (payload: { id: string (UUID), deletedAt: string (ISO 8601) }). Returns ProductDeletedEvent. Auto-generates eventId and timestamp. Throws ZodError on invalid input."
         },
         {
+          "name": "createReviewCreatedEvent",
+          "kind": "function",
+          "description": "Params: (payload: { reviewId: number (positive int), productId: number (positive int), userId: number (positive int), rating: number (int 1–5), timestamp: string (ISO 8601) }). Returns ReviewCreatedEvent. Auto-generates eventId (UUID v4) and envelope timestamp. Throws ZodError on invalid input."
+        },
+        {
           "name": "createSearchExecutedEvent",
           "kind": "function",
           "description": "Params: (payload: { query: string, resultCount: number, facetsApplied: Record<string, string[]>, userId?: string, responseTimeMs: number }). Returns SearchExecutedEvent. Auto-generates eventId and timestamp. Throws ZodError on invalid input."
@@ -149,10 +159,10 @@
         {
           "name": "validateEvent",
           "kind": "function",
-          "description": "Safe universal validator. Params: (event: unknown). Returns { success: true, data: AllEvents } | { success: false, error: Error }. Never throws. Routes to correct schema by event.type discriminator. Handles null/undefined and missing type field with descriptive error messages. Use this for consumer-side validation."
+          "description": "Safe universal validator. Params: (event: unknown). Returns { success: true, data: AllEvents } | { success: false, error: Error }. Never throws. Routes to correct schema by event.type discriminator (handles all order, payment, product, review, and search event types). Handles null/undefined and missing type field with descriptive error messages. Use this for consumer-side validation."
         }
       ]
     }
   ],
-  "updatedAt": "2026-03-01T17:02:35.393Z"
+  "updatedAt": "2026-03-29T12:00:00.000Z"
 }
